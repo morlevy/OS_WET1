@@ -1,7 +1,8 @@
 # OS_WET1
 mor:
-
+zogi
 
 
 
 eyal:
+ei zogi
