@@ -7,8 +7,9 @@
 #define COMMAND_MAX_ARGS (20)
 
 class Command {
-// TODO: Add your data members
  public:
+  std::string cmd_line;
+
   Command(const char* cmd_line);
   virtual ~Command();
   virtual void execute() = 0;
@@ -50,9 +51,10 @@ class RedirectionCommand : public Command {
 
 class ChangeDirCommand : public BuiltInCommand {
 // TODO: Add your data members public:
-  ChangeDirCommand(const char* cmd_line, char** plastPwd);
-  virtual ~ChangeDirCommand() {}
-  void execute() override;
+  public:
+    ChangeDirCommand(const char* cmd_line, char** plastPwd);
+    virtual ~ChangeDirCommand() {}
+    void execute() override;
 };
 
 class GetCurrDirCommand : public BuiltInCommand {
@@ -67,6 +69,13 @@ class ShowPidCommand : public BuiltInCommand {
   ShowPidCommand(const char* cmd_line);
   virtual ~ShowPidCommand() {}
   void execute() override;
+};
+
+class ChangePromptCommand : public BuiltInCommand {
+  public:
+    ChangePromptCommand(const char* cmd_line) : BuiltInCommand(cmd_line) {};
+    virtual ~ChangePromptCommand() {}
+    void execute() override;
 };
 
 class JobsList;
@@ -152,6 +161,9 @@ class SmallShell {
   // TODO: Add your data members
   SmallShell();
  public:
+   std::string current_prompt = "smash";
+   std::string prev_dir;
+
   Command *CreateCommand(const char* cmd_line);
   SmallShell(SmallShell const&)      = delete; // disable copy ctor
   void operator=(SmallShell const&)  = delete; // disable = operator

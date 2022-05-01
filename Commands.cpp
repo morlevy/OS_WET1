@@ -81,6 +81,49 @@ void _removeBackgroundSign(char* cmd_line) {
 }
 
 // TODO: Add your implementation for classes in Commands.h 
+void ChangePromptCommand::execute(){
+  SmallShell &smash = SmallShell::getInstance();
+  //TODO check for error
+  bool error = true;
+  if(error){
+    smash.current_prompt = "smash"; 
+  }
+  else{
+    smash.current_prompt = cmd_line; //not sure if all cmd_line
+  }
+}
+
+void ShowPidCommand::execute(){
+  std::cout << "smash pid is " << getpid() << endl; 
+}
+
+void GetCurrDirCommand::execute(){
+  char cwd[PATH_MAX];
+  if(getcwd(cwd,PATH_MAX)==NULL){
+    //error
+  }
+  else{
+    std::cout << cwd << endl;
+  }
+}
+
+void ChangeDirCommand::execute(){
+  SmallShell &smash = SmallShell::getInstance();
+  char cwd[PATH_MAX];
+  if(getcwd(cwd,PATH_MAX)==NULL){
+    //error
+  }
+  if(cmd_line=="-"){
+    int return_value = chdir(smash.prev_dir.c_str());
+    if(return_value==-1){
+      perror("smash error: cd failed");
+    }
+    else{
+      smash.prev_dir = cwd;
+    }
+  }
+}
+
 
 SmallShell::SmallShell() {
 // TODO: add your implementation
@@ -117,7 +160,9 @@ Command * SmallShell::CreateCommand(const char* cmd_line) {
 void SmallShell::executeCommand(const char *cmd_line) {
   // TODO: Add your implementation here
   // for example:
-  // Command* cmd = CreateCommand(cmd_line);
-  // cmd->execute();
+   Command* cmd = CreateCommand(cmd_line);
+   cmd->execute();
+   
   // Please note that you must fork smash process for some commands (e.g., external commands....)
 }
+
