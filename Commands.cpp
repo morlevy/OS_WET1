@@ -81,16 +81,36 @@ void _removeBackgroundSign(char* cmd_line) {
 }
 
 // TODO: Add your implementation for classes in Commands.h 
+
+vector<string> splitString(string s){
+	vector<string> v;
+	string temp = "";
+	for(int i=0;i<s.length();++i){
+		
+		if(s[i]==' '){
+			v.push_back(temp);
+			temp = "";
+		}
+		else{
+			temp.push_back(s[i]);
+		}
+		
+	}
+	v.push_back(temp);
+  return v;
+}
+
+
 void ChangePromptCommand::execute(){
   SmallShell &smash = SmallShell::getInstance();
+  vector<string> params = splitString(cmd_line);
   //TODO check for error
-  bool error = true;
-  if(error){
-    smash.current_prompt = "smash"; 
-  }
-  else{
-    smash.current_prompt = cmd_line; //not sure if all cmd_line
-  }
+  if(params.size()==1){
+      smash.current_prompt = "smash";
+    }
+    else{
+      smash.current_prompt = params.at(1);
+    }
 }
 
 void ShowPidCommand::execute(){
@@ -110,17 +130,33 @@ void GetCurrDirCommand::execute(){
 void ChangeDirCommand::execute(){
   SmallShell &smash = SmallShell::getInstance();
   char cwd[PATH_MAX];
+  string path;
   if(getcwd(cwd,PATH_MAX)==NULL){
     //error
   }
-  if(cmd_line=="-"){
-    int return_value = chdir(smash.prev_dir.c_str());
-    if(return_value==-1){
-      perror("smash error: cd failed");
+  vector <string> params = splitString(cmd_line);
+  if(params.size()>2){
+    perror("smash error: cd: too many arguments");
+    return;
+  }
+  if(params.size()==2){
+    if(params.at(1).compare("-")==0){
+      if(!smash.dir_changed_flag){
+        perror("smash error: cd: OLDPWD not set");
+        return;
+      }
+      path = smash.prev_dir;
     }
     else{
-      smash.prev_dir = cwd;
+      path = params.at(1);
     }
+    int return_value = chdir(path.c_str());
+      if(return_value==-1){
+        perror("smash error: cd failed");
+        return;
+      }
+      smash.prev_dir = cwd;
+      smash.dir_changed_flag = true;
   }
 }
 
