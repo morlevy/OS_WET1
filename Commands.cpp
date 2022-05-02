@@ -160,6 +160,76 @@ void ChangeDirCommand::execute(){
   }
 }
 
+void JobsCommand::execute(){
+  SmallShell &smash = SmallShell::getInstance();
+  smash.jobs.printJobsList();
+}
+
+void KillCommand::execute(){
+  SmallShell &smash = SmallShell::getInstance();
+  vector<string> params = splitString(cmd_line);
+
+  if(params.size()!=3){
+    //TODO: print error message
+    return;
+  }
+
+  string signum_str = params.at(1);
+  if(signum_str[0] != '-'){
+    //TODO: print error message
+    return;
+  }
+
+  signum_str = signum_str.substr(1); //slice the beginning
+  int signum = atoi(signum_str.c_str()); //convert to int
+
+  int job_id = atoi(params.at(2).c_str());
+  JobsList::JobEntry* job = smash.jobs.getJobById(job_id);
+
+  if(job == nullptr){
+    //TODO: print error message
+    return;
+  }
+  /* TODO: understand kiil command
+    execute kill.
+    if it failed print error message
+    else
+    print message 
+  */
+}
+
+//joblist functions
+void JobsList::addJob(Command* cmd, bool isStopped = false){
+  JobEntry new_job;
+  new_job.command = cmd;
+  new_job.create_time = time(nullptr);
+  new_job.pid = getpid(); //maybe change
+  new_job.job_id = jobs_list.empty() ? 1 : (jobs_list.back().job_id + 1);
+
+  // the list soerted by job_id
+  for(vector<JobEntry>::iterator it = jobs_list.begin(); it < jobs_list.end(); it++){
+    if(new_job.job_id<it->job_id){
+      jobs_list.insert(it,new_job);
+    }
+  }
+}
+
+void JobsList::printJobsList(){
+  for(vector<JobEntry>::iterator it = jobs_list.begin(); it < jobs_list.end(); it++){
+    std::cout << '[' << it->job_id << '] ' << it->command->cmd_line << ' : ' << it->pid << ' '
+              << int(difftime(time(nullptr), it->create_time)) << " secs";
+
+    if(it->is_stopped){
+      std::cout << " (stopped)";
+    }
+    std::cout << endl;
+  }
+}
+
+void JobsList::killAllJobs(){
+  
+}
+
 
 SmallShell::SmallShell() {
 // TODO: add your implementation

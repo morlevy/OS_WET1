@@ -92,9 +92,16 @@ class QuitCommand : public BuiltInCommand {
 class JobsList {
  public:
   class JobEntry {
-   // TODO: Add your data members
+    public:
+      pid_t pid;
+      int job_id;
+      time_t create_time;
+      Command *command;
+      bool is_stopped = false;
   };
  // TODO: Add your data members
+  std::vector<JobEntry> jobs_list;
+
  public:
   JobsList();
   ~JobsList();
@@ -162,7 +169,9 @@ class SmallShell {
   SmallShell();
  public:
    std::string current_prompt = "smash";
-   std::string prev_dir;
+   std::string prev_dir = "";
+   bool dir_changed_flag = false;
+   JobsList jobs;
 
   Command *CreateCommand(const char* cmd_line);
   SmallShell(SmallShell const&)      = delete; // disable copy ctor
