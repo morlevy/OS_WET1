@@ -27,207 +27,207 @@ const std::string WHITESPACE = " \n\r\t\f\v";
 
 string _ltrim(const std::string& s)
 {
-  size_t start = s.find_first_not_of(WHITESPACE);
-  return (start == std::string::npos) ? "" : s.substr(start);
+    size_t start = s.find_first_not_of(WHITESPACE);
+    return (start == std::string::npos) ? "" : s.substr(start);
 }
 
 string _rtrim(const std::string& s)
 {
-  size_t end = s.find_last_not_of(WHITESPACE);
-  return (end == std::string::npos) ? "" : s.substr(0, end + 1);
+    size_t end = s.find_last_not_of(WHITESPACE);
+    return (end == std::string::npos) ? "" : s.substr(0, end + 1);
 }
 
 string _trim(const std::string& s)
 {
-  return _rtrim(_ltrim(s));
+    return _rtrim(_ltrim(s));
 }
 
 int _parseCommandLine(const char* cmd_line, char** args) {
-  FUNC_ENTRY()
-  int i = 0;
-  std::istringstream iss(_trim(string(cmd_line)).c_str());
-  for(std::string s; iss >> s; ) {
-    args[i] = (char*)malloc(s.length()+1);
-    memset(args[i], 0, s.length()+1);
-    strcpy(args[i], s.c_str());
-    args[++i] = NULL;
-  }
-  return i;
+    FUNC_ENTRY()
+    int i = 0;
+    std::istringstream iss(_trim(string(cmd_line)).c_str());
+    for(std::string s; iss >> s; ) {
+        args[i] = (char*)malloc(s.length()+1);
+        memset(args[i], 0, s.length()+1);
+        strcpy(args[i], s.c_str());
+        args[++i] = NULL;
+    }
+    return i;
 
-  FUNC_EXIT()
+    FUNC_EXIT()
 }
 
 bool _isBackgroundComamnd(const char* cmd_line) {
-  const string str(cmd_line);
-  return str[str.find_last_not_of(WHITESPACE)] == '&';
+    const string str(cmd_line);
+    return str[str.find_last_not_of(WHITESPACE)] == '&';
 }
 
 void _removeBackgroundSign(char* cmd_line) {
-  const string str(cmd_line);
-  // find last character other than spaces
-  unsigned int idx = str.find_last_not_of(WHITESPACE);
-  // if all characters are spaces then return
-  if (idx == string::npos) {
-    return;
-  }
-  // if the command line does not end with & then return
-  if (cmd_line[idx] != '&') {
-    return;
-  }
-  // replace the & (background sign) with space and then remove all tailing spaces.
-  cmd_line[idx] = ' ';
-  // truncate the command line string up to the last non-space character
-  cmd_line[str.find_last_not_of(WHITESPACE, idx) + 1] = 0;
+    const string str(cmd_line);
+    // find last character other than spaces
+    unsigned int idx = str.find_last_not_of(WHITESPACE);
+    // if all characters are spaces then return
+    if (idx == string::npos) {
+        return;
+    }
+    // if the command line does not end with & then return
+    if (cmd_line[idx] != '&') {
+        return;
+    }
+    // replace the & (background sign) with space and then remove all tailing spaces.
+    cmd_line[idx] = ' ';
+    // truncate the command line string up to the last non-space character
+    cmd_line[str.find_last_not_of(WHITESPACE, idx) + 1] = 0;
 }
 
 // TODO: Add your implementation for classes in Commands.h 
 
 vector<string> splitString(string s){
-	vector<string> v;
-	string temp = "";
-	for(int i=0;i<s.length();++i){
-		
-		if(s[i]==' '){
-			v.push_back(temp);
-			temp = "";
-		}
-		else{
-			temp.push_back(s[i]);
-		}
-		
-	}
-	v.push_back(temp);
-  return v;
+    vector<string> v;
+    string temp = "";
+    for(int i=0;i<s.length();++i){
+
+        if(s[i]==' '){
+            v.push_back(temp);
+            temp = "";
+        }
+        else{
+            temp.push_back(s[i]);
+        }
+
+    }
+    v.push_back(temp);
+    return v;
 }
 
 
 void ChangePromptCommand::execute(){
-  SmallShell &smash = SmallShell::getInstance();
-  vector<string> params = splitString(cmd_line);
-  //TODO check for error
-  if(params.size()==1){
-      smash.current_prompt = "smash";
+    SmallShell &smash = SmallShell::getInstance();
+    vector<string> params = splitString(cmd_line);
+    //TODO check for error
+    if(params.size()==1){
+        smash.current_prompt = "smash";
     }
     else{
-      smash.current_prompt = params.at(1);
+        smash.current_prompt = params.at(1);
     }
 }
 
 void ShowPidCommand::execute(){
-  std::cout << "smash pid is " << getpid() << endl; 
+    std::cout << "smash pid is " << getpid() << endl;
 }
 
 void GetCurrDirCommand::execute(){
-  char cwd[PATH_MAX];
-  if(getcwd(cwd,PATH_MAX)==NULL){
-    //error
-  }
-  else{
-    std::cout << cwd << endl;
-  }
+    char cwd[PATH_MAX];
+    if(getcwd(cwd,PATH_MAX)==NULL){
+        //error
+    }
+    else{
+        std::cout << cwd << endl;
+    }
 }
 
 void ChangeDirCommand::execute(){
-  SmallShell &smash = SmallShell::getInstance();
-  char cwd[PATH_MAX];
-  string path;
-  if(getcwd(cwd,PATH_MAX)==NULL){
-    //error
-  }
-  vector <string> params = splitString(cmd_line);
-  if(params.size()>2){
-    perror("smash error: cd: too many arguments");
-    return;
-  }
-  if(params.size()==2){
-    if(params.at(1).compare("-")==0){
-      if(!smash.dir_changed_flag){
-        perror("smash error: cd: OLDPWD not set");
-        return;
-      }
-      path = smash.prev_dir;
+    SmallShell &smash = SmallShell::getInstance();
+    char cwd[PATH_MAX];
+    string path;
+    if(getcwd(cwd,PATH_MAX)==NULL){
+        //error
     }
-    else{
-      path = params.at(1);
-    }
-    int return_value = chdir(path.c_str());
-      if(return_value==-1){
-        perror("smash error: cd failed");
+    vector <string> params = splitString(cmd_line);
+    if(params.size()>2){
+        perror("smash error: cd: too many arguments");
         return;
-      }
-      smash.prev_dir = cwd;
-      smash.dir_changed_flag = true;
-  }
+    }
+    if(params.size()==2){
+        if(params.at(1).compare("-")==0){
+            if(!smash.dir_changed_flag){
+                perror("smash error: cd: OLDPWD not set");
+                return;
+            }
+            path = smash.prev_dir;
+        }
+        else{
+            path = params.at(1);
+        }
+        int return_value = chdir(path.c_str());
+        if(return_value==-1){
+            perror("smash error: cd failed");
+            return;
+        }
+        smash.prev_dir = cwd;
+        smash.dir_changed_flag = true;
+    }
 }
 
 void JobsCommand::execute(){
-  SmallShell &smash = SmallShell::getInstance();
-  smash.jobs.printJobsList();
+    SmallShell &smash = SmallShell::getInstance();
+    smash.jobs.printJobsList();
 }
 
 void KillCommand::execute(){
-  SmallShell &smash = SmallShell::getInstance();
-  vector<string> params = splitString(cmd_line);
+    SmallShell &smash = SmallShell::getInstance();
+    vector<string> params = splitString(cmd_line);
 
-  if(params.size()!=3){
-    //TODO: print error message
-    return;
-  }
+    if(params.size()!=3){
+        //TODO: print error message
+        return;
+    }
 
-  string signum_str = params.at(1);
-  if(signum_str[0] != '-'){
-    //TODO: print error message
-    return;
-  }
+    string signum_str = params.at(1);
+    if(signum_str[0] != '-'){
+        //TODO: print error message
+        return;
+    }
 
-  signum_str = signum_str.substr(1); //slice the beginning
-  int signum = atoi(signum_str.c_str()); //convert to int
+    signum_str = signum_str.substr(1); //slice the beginning
+    int signum = atoi(signum_str.c_str()); //convert to int
 
-  int job_id = atoi(params.at(2).c_str());
-  JobsList::JobEntry* job = smash.jobs.getJobById(job_id);
+    int job_id = atoi(params.at(2).c_str());
+    JobsList::JobEntry* job = smash.jobs.getJobById(job_id);
 
-  if(job == nullptr){
-    //TODO: print error message
-    return;
-  }
-  /* TODO: understand kiil command
-    execute kill.
-    if it failed print error message
-    else
-    print message 
-  */
+    if(job == nullptr){
+        //TODO: print error message
+        return;
+    }
+    /* TODO: understand kiil command
+      execute kill.
+      if it failed print error message
+      else
+      print message
+    */
 }
 
 //joblist functions
 void JobsList::addJob(Command* cmd, bool isStopped = false){
-  JobEntry new_job;
-  new_job.command = cmd;
-  new_job.create_time = time(nullptr);
-  new_job.pid = getpid(); //maybe change
-  new_job.job_id = jobs_list.empty() ? 1 : (jobs_list.back().job_id + 1);
+    JobEntry new_job;
+    new_job.command = cmd;
+    new_job.create_time = time(nullptr);
+    new_job.pid = getpid(); //maybe change
+    new_job.job_id = jobs_list.empty() ? 1 : (jobs_list.back().job_id + 1);
 
-  // the list soerted by job_id
-  for(vector<JobEntry>::iterator it = jobs_list.begin(); it < jobs_list.end(); it++){
-    if(new_job.job_id<it->job_id){
-      jobs_list.insert(it,new_job);
+    // the list sorted by job_id
+    for(vector<JobEntry>::iterator it = jobs_list.begin(); it < jobs_list.end(); it++){
+        if(new_job.job_id<it->job_id){
+            jobs_list.insert(it,new_job);
+        }
     }
-  }
 }
 
 void JobsList::printJobsList(){
-  for(vector<JobEntry>::iterator it = jobs_list.begin(); it < jobs_list.end(); it++){
-    std::cout << '[' << it->job_id << '] ' << it->command->cmd_line << ' : ' << it->pid << ' '
-              << int(difftime(time(nullptr), it->create_time)) << " secs";
+    for(vector<JobEntry>::iterator it = jobs_list.begin(); it < jobs_list.end(); it++){
+        std::cout << '[' << it->job_id << '] ' << it->command->cmd_line << ' : ' << it->pid << ' ' //might need to change the command printing
+                  << int(difftime(time(nullptr), it->create_time)) << " secs";
 
-    if(it->is_stopped){
-      std::cout << " (stopped)";
+        if(it->is_stopped){
+            std::cout << " (stopped)";
+        }
+        std::cout << endl;
     }
-    std::cout << endl;
-  }
 }
 
 void JobsList::killAllJobs(){
-  
+
 }
 
 
@@ -243,7 +243,7 @@ SmallShell::~SmallShell() {
 * Creates and returns a pointer to Command class which matches the given command line (cmd_line)
 */
 Command * SmallShell::CreateCommand(const char* cmd_line) {
-	// For example:
+    // For example:
 /*
   string cmd_s = _trim(string(cmd_line));
   string firstWord = cmd_s.substr(0, cmd_s.find_first_of(" \n"));
@@ -260,15 +260,14 @@ Command * SmallShell::CreateCommand(const char* cmd_line) {
     return new ExternalCommand(cmd_line);
   }
   */
-  return nullptr;
+    return nullptr;
 }
 
 void SmallShell::executeCommand(const char *cmd_line) {
-  // TODO: Add your implementation here
-  // for example:
-   Command* cmd = CreateCommand(cmd_line);
-   cmd->execute();
-   
-  // Please note that you must fork smash process for some commands (e.g., external commands....)
-}
+    // TODO: Add your implementation here
+    // for example:
+    Command* cmd = CreateCommand(cmd_line);
+    cmd->execute();
 
+    // Please note that you must fork smash process for some commands (e.g., external commands....)
+}
