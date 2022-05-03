@@ -8,6 +8,7 @@
 #include "Commands.h"
 #include <time.h>
 #include <utime.h>
+#include <algorithm>
 
 
 using namespace std;
@@ -198,6 +199,29 @@ void KillCommand::execute(){
     */
 }
 
+void ForegroundCommand::execute(){
+    SmallShell &smash = SmallShell::getInstance();
+    vector<string> params = splitString(cmd_line);
+
+    string fg_cmd_line;
+    pid_t fg_pid;
+
+    //case no specific job
+    if (params.size()==1)
+    {
+        if (smash.jobs.jobs_list.empty())
+            perror("smash error: fg: jobs list is empty");
+        else
+        {
+            fg_cmd_line = smash.jobs.jobs_list.end()->command->cmd_line;
+            fg_pid = smash.jobs.jobs_list.end()->pid;
+            //need to make sure that the big job id is indeed at the back, but probably it is
+
+        }
+    }
+
+}
+
 //joblist functions
 void JobsList::addJob(Command* cmd, bool isStopped = false){
     JobEntry new_job;
@@ -267,6 +291,7 @@ void SmallShell::executeCommand(const char *cmd_line) {
     // TODO: Add your implementation here
     // for example:
     Command* cmd = CreateCommand(cmd_line);
+    //delete finished jobs
     cmd->execute();
 
     // Please note that you must fork smash process for some commands (e.g., external commands....)
