@@ -9,7 +9,7 @@
 #include <time.h>
 #include <utime.h>
 #include <algorithm>
-
+#include <signal.h>
 
 using namespace std;
 
@@ -25,6 +25,13 @@ using namespace std;
 #endif
 
 const std::string WHITESPACE = " \n\r\t\f\v";
+
+bool isNumber(string line)
+{
+    char* p;
+    strtol(line.c_str(), &p, 10);
+    return *p == 0;
+}
 
 string _ltrim(const std::string& s)
 {
@@ -126,6 +133,61 @@ void GetCurrDirCommand::execute(){
     else{
         std::cout << cwd << endl;
     }
+}
+
+void BackgroundCommand::execute(){
+  vector <string> params = splitString(cmd_line);
+  SmallShell &smash = SmallShell::getInstance();
+
+  //too many arguments
+  if(params.size()>2){
+    perror("smash error: bg: invalid arguments");
+    return;
+  }
+
+  if(params.size()==2){
+    string job_id_str = params.at(1);
+
+    //argument is not number
+    if(!isNumber(job_id_str)){
+      perror("smash error: bg: invalid arguments");
+      return;
+    }
+
+    int job_id = atoi(job_id_str.c_str());
+    JobsList::JobEntry *job = smash.jobs.getJobById(job_id);
+
+    //job doesnt exists
+    if(job == nullptr){
+      fprintf(stderr, "smash error: bg: job-id <%s> does not exist", job_id_str , strerror(errno));
+      return;
+    }
+
+    //job is running
+    if(!job->is_stopped){
+      fprintf(stderr, "smash error: bg: job-id <%s> is already running in the background", job_id_str , strerror(errno));
+      return;      
+    }
+
+    kill(job->pid,SIGCONT);
+    job->is_stopped = false;
+  }
+  else{ //no parameters
+    vector<JobsList::JobEntry> &job_list = smash.jobs.jobs_list;
+    vector<JobsList::JobEntry>::iterator it = job_list.begin();
+    bool not_found = true;
+
+    while(it != job_list.end() && not_found){
+      if(it->is_stopped){
+        not_found = false;
+        kill(it->pid,SIGCONT);
+        return;
+      }
+      it++;
+    }
+
+    perror("smash error: bg: there is no stopped jobs to resume");
+  }
 }
 
 void ChangeDirCommand::execute(){
