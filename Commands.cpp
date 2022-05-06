@@ -302,6 +302,11 @@ void KillCommand::execute()
     }
 }
 
+void ExternalCommand::execute(){
+    //meanwhile
+    return;
+}
+
 void ForegroundCommand::execute()
 {
     SmallShell &smash = SmallShell::getInstance();

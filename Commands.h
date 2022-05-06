@@ -11,7 +11,7 @@ class Command {
 public:
     std::string cmd_line;
 
-    Command(const char* cmd_line);
+    Command(const char* cmd_line): cmd_line(cmd_line){};
     virtual ~Command();
     virtual void execute() = 0;
     //virtual void prepare();
@@ -21,13 +21,13 @@ public:
 
 class BuiltInCommand : public Command {
 public:
-    BuiltInCommand(const char* cmd_line);
+    BuiltInCommand(const char* cmd_line) : Command(cmd_line){};
     virtual ~BuiltInCommand() {}
 };
 
 class ExternalCommand : public Command {
 public:
-    ExternalCommand(const char* cmd_line);
+    ExternalCommand(const char* cmd_line) : Command(cmd_line){};
     virtual ~ExternalCommand() {}
     void execute() override;
 };
@@ -35,7 +35,7 @@ public:
 class PipeCommand : public Command {
     // TODO: Add your data members
 public:
-    PipeCommand(const char* cmd_line);
+    PipeCommand(const char* cmd_line); //
     virtual ~PipeCommand() {}
     void execute() override;
 };
@@ -53,21 +53,21 @@ public:
 class ChangeDirCommand : public BuiltInCommand {
 // TODO: Add your data members public:
 public:
-    ChangeDirCommand(const char* cmd_line, char** plastPwd);
+    ChangeDirCommand(const char* cmd_line, char** plastPwd) : BuiltInCommand(cmd_line){};
     virtual ~ChangeDirCommand() {}
     void execute() override;
 };
 
 class GetCurrDirCommand : public BuiltInCommand {
 public:
-    GetCurrDirCommand(const char* cmd_line);
+    GetCurrDirCommand(const char* cmd_line) : BuiltInCommand(cmd_line){};
     virtual ~GetCurrDirCommand() {}
     void execute() override;
 };
 
 class ShowPidCommand : public BuiltInCommand {
 public:
-    ShowPidCommand(const char* cmd_line);
+    ShowPidCommand(const char* cmd_line) : BuiltInCommand(cmd_line){};
     virtual ~ShowPidCommand() {}
     void execute() override;
 };
@@ -83,7 +83,7 @@ class JobsList;
 class QuitCommand : public BuiltInCommand {
 // TODO: Add your data members public:
 public:
-    QuitCommand(const char* cmd_line, JobsList* jobs);
+    QuitCommand(const char* cmd_line, JobsList* jobs): BuiltInCommand(cmd_line){};
     virtual ~QuitCommand() {}
     void execute() override;
 };
@@ -120,8 +120,9 @@ public:
 
 class JobsCommand : public BuiltInCommand {
     // TODO: Add your data members
+    //TODO we can add job var and then we dont have to use getinstance
 public:
-    JobsCommand(const char* cmd_line, JobsList* jobs);
+    JobsCommand(const char* cmd_line, JobsList* jobs) : BuiltInCommand(cmd_line){};
     virtual ~JobsCommand() {}
     void execute() override;
 };
@@ -129,7 +130,7 @@ public:
 class KillCommand : public BuiltInCommand {
     // TODO: Add your data members
 public:
-    KillCommand(const char* cmd_line, JobsList* jobs);
+    KillCommand(const char* cmd_line, JobsList* jobs) : BuiltInCommand(cmd_line){};
     virtual ~KillCommand() {}
     void execute() override;
 };
@@ -137,7 +138,7 @@ public:
 class ForegroundCommand : public BuiltInCommand {
     // TODO: Add your data members
 public:
-    ForegroundCommand(const char* cmd_line, JobsList* jobs);
+    ForegroundCommand(const char* cmd_line, JobsList* jobs) : BuiltInCommand(cmd_line){};
     virtual ~ForegroundCommand() {}
     void execute() override;
 };
@@ -145,21 +146,21 @@ public:
 class BackgroundCommand : public BuiltInCommand {
     // TODO: Add your data members
 public:
-    BackgroundCommand(const char* cmd_line, JobsList* jobs);
+    BackgroundCommand(const char* cmd_line, JobsList* jobs) : BuiltInCommand(cmd_line){};
     virtual ~BackgroundCommand() {}
     void execute() override;
 };
 
 class TailCommand : public BuiltInCommand {
 public:
-    TailCommand(const char* cmd_line);
+    TailCommand(const char* cmd_line) : BuiltInCommand(cmd_line){};
     virtual ~TailCommand() {}
     void execute() override;
 };
 
 class TouchCommand : public BuiltInCommand {
 public:
-    TouchCommand(const char* cmd_line);
+    TouchCommand(const char* cmd_line) : BuiltInCommand(cmd_line){};
     virtual ~TouchCommand() {}
     void execute() override;
 };
