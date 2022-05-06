@@ -189,7 +189,7 @@ void BackgroundCommand::execute()
             return;
         }
 
-        
+
         kill(job->pid, SIGCONT);
         job->is_stopped = false;
     }
@@ -290,7 +290,6 @@ void KillCommand::execute()
         fprintf(stderr, "smash error: kill: job-id <%d> does not exist", job_id, strerror(errno));
         return;
     }
-    JobsList::JobEntry *job = smash.jobs.getJobById(job_id);
     if (kill(job->pid, signum) == -1)
     {
         perror("smash error: kill failed");
@@ -303,8 +302,25 @@ void KillCommand::execute()
 }
 
 void ExternalCommand::execute(){
-    //meanwhile
-    return;
+    SmallShell &smash = SmallShell::getInstance();
+    vector<string> params = splitString(cmd_line);
+    bool is_background = params.back() == "&";
+    int pid = fork();
+
+    if (pid == 0){ //child
+        char command[COMMAND_ARGS_MAX_LENGTH];
+        cmd_line.copy(command , cmd_line.length());
+        command[cmd_line.size()-1] = '\0'; // remove &
+        char* argv[4] = {"/bin/bash","-c",command, nullptr};
+
+        if(execv(argv[0],argv)==-1){
+            perror("smash: execv failed");
+            exit(1);
+        }
+        return;
+    } else { //father code
+
+    }
 }
 
 void ForegroundCommand::execute()
@@ -371,8 +387,23 @@ void ForegroundCommand::execute()
     smash.jobs.removeJobById(job_id);
 }
 
+void QuitCommand::execute() {
+    //job list kill
+    SmallShell &smash = SmallShell::getInstance();
+    vector<string> params = splitString(cmd_line);
+    if (params.at(1) != "kill")
+    {
+        smash.quit = true;
+    }
+    cout << "sending SIGKILL signal to " << smash.jobs.jobs_list.size() << " jobs";
+    smash.jobs.printJobsList();//check print format
+    smash.jobs.killAllJobs();
+    smash.quit = true;
+}
+
 // joblist functions
-void JobsList::addJob(Command *cmd, bool isStopped = false)
+
+void JobsList::addJob(Command *cmd, bool isStopped)
 {
     JobEntry new_job;
     new_job.command = cmd;
@@ -407,6 +438,14 @@ void JobsList::printJobsList()
 
 void JobsList::killAllJobs()
 {
+    for (vector<JobsList::JobEntry>::iterator it = jobs_list.begin(); it < jobs_list.end(); it++)
+    {
+        if (kill(it->pid, SIGKILL) == -1)
+        {
+            perror("smash error: Killing failed");
+            return;
+        }
+    }
 }
 
 //void killAllJobs();
@@ -435,7 +474,7 @@ void JobsList::removeJobById(int jobId)
     while(it != jobs_list.end())
     {
         if (it->job_id == jobId)
-        {   
+        {
             jobs_list.erase(it);
             return;
         }
@@ -450,7 +489,7 @@ JobsList::JobEntry * JobsList::getLastJob(int* lastJobId)
     JobEntry &job = jobs_list.back();
     *lastJobId = job.job_id;
     return &job;
-    
+
 }
 JobsList::JobEntry * JobsList::getLastStoppedJob(int *jobId)
 {
@@ -534,11 +573,11 @@ Command *SmallShell::CreateCommand(const char *cmd_line)
 
 void SmallShell::executeCommand(const char *cmd_line)
 {
-        // TODO: Add your implementation here
-        // for example:
-        Command *cmd = CreateCommand(cmd_line);
-        // delete finished jobs
-        cmd->execute();
+    // TODO: Add your implementation here
+    // for example:
+    Command *cmd = CreateCommand(cmd_line);
+    // delete finished jobs
+    cmd->execute();
 
-        // Please note that you must fork smash process for some commands (e.g., external commands....)
+    // Please note that you must fork smash process for some commands (e.g., external commands....)
 }

@@ -6,13 +6,15 @@
 
 #define COMMAND_ARGS_MAX_LENGTH (200)
 #define COMMAND_MAX_ARGS (20)
+#define MAX_INPUT 1024
+#define PATH_MAX 1024
 
 class Command {
 public:
     std::string cmd_line;
 
-    Command(const char* cmd_line): cmd_line(cmd_line){};
-    virtual ~Command();
+    explicit Command(const char* cmd_line): cmd_line(cmd_line){};
+    virtual ~Command() = default;
     virtual void execute() = 0;
     //virtual void prepare();
     //virtual void cleanup();
@@ -83,9 +85,9 @@ class JobsList;
 class QuitCommand : public BuiltInCommand {
 // TODO: Add your data members public:
 public:
-    QuitCommand(const char* cmd_line, JobsList* jobs): BuiltInCommand(cmd_line){};
+    QuitCommand(const char* cmd_line, JobsList* jobs): BuiltInCommand(cmd_line){}; // we need to implement quit execute
     virtual ~QuitCommand() {}
-    void execute() override;
+    void execute() override;//
 };
 
 
@@ -105,8 +107,8 @@ public:
     std::vector<JobEntry> jobs_list;
 
 public:
-    JobsList();
-    ~JobsList();
+    JobsList() = default;
+    ~JobsList() = default;
     void addJob(Command* cmd, bool isStopped = false);
     void printJobsList();
     void killAllJobs();
@@ -175,6 +177,7 @@ public:
     std::string prev_dir = "";
     bool dir_changed_flag = false;
     JobsList jobs;
+    bool quit = false;
 
     Command *CreateCommand(const char* cmd_line);
     SmallShell(SmallShell const&)      = delete; // disable copy ctor
