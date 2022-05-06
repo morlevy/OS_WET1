@@ -178,14 +178,14 @@ void BackgroundCommand::execute()
         // job doesnt exists
         if (job == nullptr)
         {
-            fprintf(stderr, "smash error: bg: job-id <%s> does not exist", job_id_str, strerror(errno));
+            fprintf(stderr, "smash error: bg: job-id <%s> does not exist", job_id_str.c_str() , strerror(errno));
             return;
         }
 
         // job is running
         if (!job->is_stopped)
         {
-            fprintf(stderr, "smash error: bg: job-id <%s> is already running in the background", job_id_str, strerror(errno));
+            fprintf(stderr, "smash error: bg: job-id <%s> is already running in the background", job_id_str.c_str() , strerror(errno));
             return;
         }
 
@@ -310,7 +310,7 @@ void ExternalCommand::execute(){
     if (pid == 0){ //child
         char command[COMMAND_ARGS_MAX_LENGTH];
         cmd_line.copy(command , cmd_line.length());
-        command[cmd_line.size()-1] = '\0'; // remove &
+        _removeBackgroundSign(command);
         char* argv[4] = {"/bin/bash","-c",command, nullptr};
 
         if(execv(argv[0],argv)==-1){
@@ -319,7 +319,14 @@ void ExternalCommand::execute(){
         }
         return;
     } else { //father code
-
+        if(!is_background){
+            JobsList::JobEntry *job = smash.jobs.addJob(this);
+            int status = 0;
+            int wait_pid_return = waitpid(pid,&status,WUNTRACED);
+            if(WIFSTOPPED(status)){
+                    job->is_stopped = true;
+            }
+        }
     }
 }
 
@@ -379,7 +386,7 @@ void ForegroundCommand::execute()
     std::cout << fg_cmd_line << endl;
     if (kill(fg_pid, SIGCONT) == -1)
     {
-        perror("smash error: kill failed");
+        perror("smash error: SIGCONT failed");
         return;
     }
     //maybe check return value? no error message explicit
@@ -401,9 +408,33 @@ void QuitCommand::execute() {
     smash.quit = true;
 }
 
+void TailCommand::execute() {
+    SmallShell &smash = SmallShell::getInstance();
+    vector<string> params = splitString(cmd_line);
+    int N = 10;
+
+    if (params.size()>3)
+    {
+        perror("smash error: tail: invalid arguments");
+        return;
+    }
+
+    if (params.size()==2)
+    {
+        char* p;
+        long converted = strtol(params.at(1).c_str(), &p, 10);
+        if (*p) {
+            // conversion failed because the input wasn't a number
+        }
+        else {
+            // use converted
+        }
+    }
+}
+
 // joblist functions
 
-void JobsList::addJob(Command *cmd, bool isStopped)
+JobsList::JobEntry* JobsList::addJob(Command *cmd, bool isStopped)
 {
     JobEntry new_job;
     new_job.command = cmd;
@@ -442,8 +473,7 @@ void JobsList::killAllJobs()
     {
         if (kill(it->pid, SIGKILL) == -1)
         {
-            perror("smash error: Killing failed");
-            return;
+            perror("smash error: SIGKILL failed");
         }
     }
 }
