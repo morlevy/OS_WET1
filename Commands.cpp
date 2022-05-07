@@ -411,25 +411,75 @@ void QuitCommand::execute() {
 void TailCommand::execute() {
     SmallShell &smash = SmallShell::getInstance();
     vector<string> params = splitString(cmd_line);
-    int N = 10;
-
-    if (params.size()>3)
+    long N = 10;
+    string path;
+    if (params.size()>3) //checking paramters
     {
         perror("smash error: tail: invalid arguments");
         return;
     }
 
-    if (params.size()==2)
+    //setting up N and PATH for file
+    if (params.size()==3)
     {
         char* p;
         long converted = strtol(params.at(1).c_str(), &p, 10);
         if (*p) {
-            // conversion failed because the input wasn't a number
+            perror("smash error: tail: invalid arguments");
+            return;
         }
         else {
-            // use converted
+            N = converted;
+        }
+        path = params.at(2);
+    }
+    else
+        path = params.at(1);
+
+    //getting file descriptor
+    int fd = open(path.c_str(),O_RDONLY);
+    if (fd == -1)
+    {
+        perror("smash error: open failed");
+        return;
+    }
+
+    string line;
+    long line_size;
+    string input ;
+    int count = 0;
+    long write_res;
+    while(count<N) //going through N lines in the file
+    {
+        long read_size = read(fd, (void *)&input, 1);
+        if (read_size == -1)
+        {
+            perror("smash error: read failed");
+            return;
+        }
+        if (read_size == 0) return;
+        
+        if (input == "\n")
+        {
+            count++;
+            line_size++;
+            (line) += "\n";
+            write_res = write(1, (void *) &line, line_size); //pretty sure 1 is the fd to write to but should check later.
+            if (write_res == -1)
+            {
+                perror("smash error: write failed");
+                return;
+            }
+            line_size = 0;
+            line = "";
+        }
+        else
+        {
+            line_size++;
+            line += input;
         }
     }
+
 }
 
 // joblist functions

@@ -3,6 +3,9 @@
 
 #include <vector>
 #include <string>
+#include <sys/stat.h>
+#include <sys/types.h>
+#include <fcntl.h>
 
 #define COMMAND_ARGS_MAX_LENGTH (200)
 #define COMMAND_MAX_ARGS (20)
@@ -109,7 +112,7 @@ public:
 public:
     JobsList() = default;
     ~JobsList() = default;
-    void addJob(Command* cmd, bool isStopped = false);
+    JobEntry* addJob(Command* cmd, bool isStopped = false);
     void printJobsList();
     void killAllJobs();
     void removeFinishedJobs();
