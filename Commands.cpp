@@ -713,6 +713,11 @@ void SmallShell::executeCommand(const char *cmd_line)
     // for example:
     Command *cmd = CreateCommand(cmd_line);
     // delete finished jobs
+
+    //might need to fork here
+    //then save the child pid which will be the foreground pid
+    //when getting ^c or ^z we will use the child pid
+    //need to check if this is good
     cmd->execute();
 
     // Please note that you must fork smash process for some commands (e.g., external commands....)

@@ -6,7 +6,8 @@
 using namespace std;
 
 void ctrlZHandler(int sig_num) {
-	// TODO: Add your implementation
+    SmallShell &smash = SmallShell::getInstance();
+    int res = kill(smash.)
 }
 
 void ctrlCHandler(int sig_num) {
