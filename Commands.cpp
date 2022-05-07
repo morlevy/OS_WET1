@@ -485,6 +485,7 @@ void TouchCommand::execute() {
     SmallShell &smash = SmallShell::getInstance();
     vector<string> params = splitString(cmd_line);
 
+    //checking format of parameters
     if (params.size() > 3)
     {
         perror("smash error: touch: invalid arguments");
@@ -493,6 +494,7 @@ void TouchCommand::execute() {
     utimbuf time;
     tm t_time;
 
+    //splitting the time data into a dates vector
     std::vector<std::string> dates;
     istringstream iss(params.at(2));
     std::string token;
@@ -501,8 +503,27 @@ void TouchCommand::execute() {
             dates.push_back(token);
     }
 
-    //finish creating time
-    time.actime =;
+    //setting time struct
+    t_time.tm_sec = atoi(dates.at(0).c_str());
+    t_time.tm_min = atoi(dates.at(1).c_str());
+    t_time.tm_hour = atoi(dates.at(2).c_str());
+    t_time.tm_mday = atoi(dates.at(3).c_str());
+    t_time.tm_mon = atoi(dates.at(4).c_str());
+    t_time.tm_year = atoi(dates.at(5).c_str());
+    t_time.tm_wday = 0;
+    t_time.tm_yday = 0;
+    t_time.tm_isdst = -1;
+
+    time.actime = mktime(&t_time);
+    if (time.actime == -1)
+    {
+        perror("smash error: mktime failed");
+    }
+    time.modtime = mktime(&t_time);
+    if (time.modtime == -1)
+    {
+        perror("smash error: mktime failed");
+    }
     int res = utime(params.at(1).c_str(), &time);
     if (res == -1)
     {
