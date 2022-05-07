@@ -458,7 +458,7 @@ void TailCommand::execute() {
             return;
         }
         if (read_size == 0) return;
-        
+
         if (input == "\n")
         {
             count++;
@@ -479,7 +479,35 @@ void TailCommand::execute() {
             line += input;
         }
     }
+}
 
+void TouchCommand::execute() {
+    SmallShell &smash = SmallShell::getInstance();
+    vector<string> params = splitString(cmd_line);
+
+    if (params.size() > 3)
+    {
+        perror("smash error: touch: invalid arguments");
+        return;
+    }
+    utimbuf time;
+    tm t_time;
+
+    std::vector<std::string> dates;
+    istringstream iss(params.at(2));
+    std::string token;
+    while (std::getline(iss, token, ':')) {
+        if (!token.empty())
+            dates.push_back(token);
+    }
+
+    //finish creating time
+    time.actime =;
+    int res = utime(params.at(1).c_str(), &time);
+    if (res == -1)
+    {
+        perror("smash error: utime failed");
+    }
 }
 
 // joblist functions
@@ -528,7 +556,6 @@ void JobsList::killAllJobs()
     }
 }
 
-//void killAllJobs();
 void JobsList::removeFinishedJobs()
 {
     vector<JobsList::JobEntry>::iterator it = jobs_list.begin();
@@ -644,6 +671,14 @@ Command *SmallShell::CreateCommand(const char *cmd_line)
     else if (firstWord.compare("quit") == 0)
     {
         return new QuitCommand(cmd_line,job_list);
+    }
+    else if (firstWord == "Tail")
+    {
+        return new TailCommand(cmd_line);
+    }
+    else if (firstWord == "Touch")
+    {
+        return new TouchCommand(cmd_line);
     }
     else{
         //return new ExternalCommand(cmd_line);
