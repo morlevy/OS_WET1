@@ -400,9 +400,10 @@ void QuitCommand::execute() {
     //job list kill
     SmallShell &smash = SmallShell::getInstance();
     vector<string> params = splitString(cmd_line);
-    if (params.at(1) != "kill")
+    if (params.size() != 2 || params[1] != "kill")
     {
         smash.quit = true;
+        return;
     }
     cout << "sending SIGKILL signal to " << smash.jobs.jobs_list.size() << " jobs";
     smash.jobs.printJobsList();//check print format
@@ -718,8 +719,7 @@ Command *SmallShell::CreateCommand(const char *cmd_line)
         return new TouchCommand(cmd_line);
     }
     else{
-        //return new ExternalCommand(cmd_line);
-        return nullptr;
+        return new ExternalCommand(cmd_line);
     }
 }
 
@@ -729,7 +729,7 @@ void SmallShell::executeCommand(const char *cmd_line)
     // for example:
     Command *cmd = CreateCommand(cmd_line);
     // delete finished jobs
-
+    if (cmd == nullptr) return;
     //might need to fork here
     //then save the child pid which will be the foreground pid
     //when getting ^c or ^z we will use the child pid
