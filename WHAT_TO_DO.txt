@@ -1,3 +1,5 @@
 # OS_WET1
 
 supporting & background should support both "command&" and "command &"
+
+line 312 commands.cpp - copy function isn't working well - need to check
