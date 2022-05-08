@@ -9,12 +9,11 @@
 #include <sys/time.h>
 #include <utime.h>
 #include <time.h>
-
+#include <limits.h>
 
 #define COMMAND_ARGS_MAX_LENGTH (200)
 #define COMMAND_MAX_ARGS (20)
-#define MAX_INPUT 1024
-#define PATH_MAX 1024
+
 
 class Command {
 public:
@@ -116,7 +115,8 @@ public:
 public:
     JobsList() = default;
     ~JobsList() = default;
-    JobEntry* addJob(Command* cmd, bool isStopped = false);
+    JobEntry* addJob(Command* cmd, bool isStopped = false); //changed to void
+    void insertJob(JobEntry *new_job);
     void printJobsList();
     void killAllJobs();
     void removeFinishedJobs();
@@ -184,6 +184,7 @@ public:
     std::string prev_dir = "";
     bool dir_changed_flag = false;
     JobsList jobs;
+    JobsList::JobEntry* foreground;
     bool quit = false;
 
     Command *CreateCommand(const char* cmd_line);

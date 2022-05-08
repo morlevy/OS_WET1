@@ -322,10 +322,12 @@ void ExternalCommand::execute(){
         if(!is_background){
             JobsList::JobEntry *job = smash.jobs.addJob(this);
             int status = 0;
+            smash.foreground = job;
             int wait_pid_return = waitpid(pid,&status,WUNTRACED);
             if(WIFSTOPPED(status)){
                     job->is_stopped = true;
             }
+            smash.foreground = nullptr;
         }
     }
 }
@@ -533,7 +535,7 @@ void TouchCommand::execute() {
 
 // joblist functions
 
-JobsList::JobEntry* JobsList::addJob(Command *cmd, bool isStopped)
+JobsList::JobEntry *JobsList::addJob(Command *cmd, bool isStopped)
 {
     JobEntry new_job;
     new_job.command = cmd;
@@ -542,11 +544,25 @@ JobsList::JobEntry* JobsList::addJob(Command *cmd, bool isStopped)
     new_job.job_id = jobs_list.empty() ? 1 : (jobs_list.back().job_id + 1);
 
     // the list sorted by job_id
+    insertJob(&new_job);
+
+    return &new_job;
+    //for (vector<JobEntry>::iterator it = jobs_list.begin(); it < jobs_list.end(); it++)
+    //{
+    //    if (new_job.job_id < it->job_id)
+    //    {
+    //        jobs_list.insert(it, new_job);
+    //    }
+    //}
+}
+
+void JobsList::insertJob(JobEntry *new_job) {
+    // the list sorted by job_id
     for (vector<JobEntry>::iterator it = jobs_list.begin(); it < jobs_list.end(); it++)
     {
-        if (new_job.job_id < it->job_id)
+        if (new_job->job_id < it->job_id)
         {
-            jobs_list.insert(it, new_job);
+            jobs_list.insert(it, *new_job);
         }
     }
 }
