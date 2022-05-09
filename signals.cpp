@@ -17,7 +17,7 @@ void ctrlZHandler(int sig_num) {
     }
     smash.foreground->is_stopped = true;
     smash.jobs.insertJob(smash.foreground);
-    cout << "smash: process " << smash.foreground->pid << " was stopped";
+    cout << "smash: process " << smash.foreground->pid << " was stopped\n";
 }
 
 void ctrlCHandler(int sig_num) {
@@ -29,7 +29,7 @@ void ctrlCHandler(int sig_num) {
     {
         perror("smash error: kill failed");
     }
-    cout << "smash: process " << smash.foreground->pid << " was killed";
+    cout << "smash: process " << smash.foreground->pid << " was killed\n";
 }
 
 void alarmHandler(int sig_num) {

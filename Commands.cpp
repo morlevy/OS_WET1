@@ -647,16 +647,16 @@ void RedirectionCommand::execute() { //">>" append
 
 JobsList::JobEntry *JobsList::addJob(Command *cmd, pid_t pid, bool isStopped)
 {
-    JobEntry new_job;
-    new_job.command = cmd;
-    new_job.create_time = time(nullptr);
-    new_job.pid = pid; // maybe change
-    new_job.job_id = jobs_list.empty() ? 1 : (jobs_list.back().job_id + 1);
+    JobEntry *new_job = new JobEntry();
+    new_job->command = cmd;
+    new_job->create_time = time(nullptr);
+    new_job->pid = pid; // maybe change
+    new_job->job_id = jobs_list.empty() ? 1 : (jobs_list.back().job_id + 1);
 
     // the list sorted by job_id
-    insertJob(&new_job);
+    insertJob(new_job);
 
-    return &new_job;
+    return new_job;
     //for (vector<JobEntry>::iterator it = jobs_list.begin(); it < jobs_list.end(); it++)
     //{
     //    if (new_job.job_id < it->job_id)
@@ -668,11 +668,16 @@ JobsList::JobEntry *JobsList::addJob(Command *cmd, pid_t pid, bool isStopped)
 
 void JobsList::insertJob(JobEntry *new_job) {
     // the list sorted by job_id
+    if (jobs_list.empty()) {
+        jobs_list.push_back(*new_job);
+        return;
+    }
     for (vector<JobEntry>::iterator it = jobs_list.begin(); it < jobs_list.end(); it++)
     {
         if (new_job->job_id < it->job_id)
         {
             jobs_list.insert(it, *new_job);
+            return;
         }
     }
 }
