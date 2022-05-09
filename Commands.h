@@ -113,6 +113,13 @@ public:
         time_t create_time;
         Command *command;
         bool is_stopped = false;
+        JobEntry(Command *cmd, pid_t pid, bool is_stopped = false) //constructor for JobEntry class - must define the job_id later
+        {
+            this->command = cmd;
+            this->create_time = time(nullptr);
+            this->pid = pid; // maybe change
+            this->job_id = -1;
+        }
     };
     // TODO: Add your data members
     std::vector<JobEntry> jobs_list;

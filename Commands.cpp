@@ -396,8 +396,9 @@ void ExternalCommand::execute(){
         }
         return;
     } else { //father code
+        JobsList::JobEntry *job = new JobsList::JobEntry(this, pid);//smash.jobs.addJob(this, pid);
+        job->job_id = smash.jobs.jobs_list.empty() ? 1 : (smash.jobs.jobs_list.back().job_id + 1);
         if(!is_background){
-            JobsList::JobEntry *job = smash.jobs.addJob(this, pid);
             int status = 0;
             smash.foreground = job;
             int wait_pid_return = waitpid(pid,&status,WUNTRACED);
@@ -405,6 +406,10 @@ void ExternalCommand::execute(){
                     job->is_stopped = true;
             }
             smash.foreground = nullptr;
+        }
+        else
+        {
+            smash.jobs.insertJob(job);
         }
     }
 }
@@ -645,26 +650,26 @@ void RedirectionCommand::execute() { //">>" append
 
 // joblist functions
 
-JobsList::JobEntry *JobsList::addJob(Command *cmd, pid_t pid, bool isStopped)
-{
-    JobEntry *new_job = new JobEntry();
-    new_job->command = cmd;
-    new_job->create_time = time(nullptr);
-    new_job->pid = pid; // maybe change
-    new_job->job_id = jobs_list.empty() ? 1 : (jobs_list.back().job_id + 1);
-
-    // the list sorted by job_id
-    insertJob(new_job);
-
-    return new_job;
-    //for (vector<JobEntry>::iterator it = jobs_list.begin(); it < jobs_list.end(); it++)
-    //{
-    //    if (new_job.job_id < it->job_id)
-    //    {
-    //        jobs_list.insert(it, new_job);
-    //    }
-    //}
-}
+//JobsList::JobEntry *JobsList::addJob(Command *cmd, pid_t pid, bool isStopped)
+//{
+//    JobEntry *new_job = new JobEntry(cmd, pid, isStopped);
+//    new_job->command = cmd;
+//    new_job->create_time = time(nullptr);
+//    new_job->pid = pid; // maybe change
+//    new_job->job_id = jobs_list.empty() ? 1 : (jobs_list.back().job_id + 1);
+//
+//    // the list sorted by job_id
+//    insertJob(new_job);
+//
+//    return new_job;
+//    //for (vector<JobEntry>::iterator it = jobs_list.begin(); it < jobs_list.end(); it++)
+//    //{
+//    //    if (new_job.job_id < it->job_id)
+//    //    {
+//    //        jobs_list.insert(it, new_job);
+//    //    }
+//    //}
+//}
 
 void JobsList::insertJob(JobEntry *new_job) {
     // the list sorted by job_id
@@ -686,7 +691,7 @@ void JobsList::printJobsList()
 {
     for (vector<JobEntry>::iterator it = jobs_list.begin(); it < jobs_list.end(); it++)
     {
-        std::cout << '[' << it->job_id << '] ' << it->command->cmd_line << ' : ' << it->pid << ' ' // might need to change the command printing
+        std::cout << '[' << (it->job_id) << '] ' << (it->command->cmd_line) << ' : ' << it->pid << ' ' // might need to change the command printing
                   << int(difftime(time(nullptr), it->create_time)) << " secs";
 
         if (it->is_stopped)
