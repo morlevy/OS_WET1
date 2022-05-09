@@ -120,7 +120,7 @@ public:
 public:
     JobsList() = default;
     ~JobsList() = default;
-    JobEntry* addJob(Command* cmd, bool isStopped = false); //changed to void
+    JobEntry* addJob(Command* cmd, pid_t pid, bool isStopped = false); //changed to void
     void insertJob(JobEntry *new_job);
     void printJobsList();
     void killAllJobs();

@@ -397,7 +397,7 @@ void ExternalCommand::execute(){
         return;
     } else { //father code
         if(!is_background){
-            JobsList::JobEntry *job = smash.jobs.addJob(this);
+            JobsList::JobEntry *job = smash.jobs.addJob(this, pid);
             int status = 0;
             smash.foreground = job;
             int wait_pid_return = waitpid(pid,&status,WUNTRACED);
@@ -645,12 +645,12 @@ void RedirectionCommand::execute() { //">>" append
 
 // joblist functions
 
-JobsList::JobEntry *JobsList::addJob(Command *cmd, bool isStopped)
+JobsList::JobEntry *JobsList::addJob(Command *cmd, pid_t pid, bool isStopped)
 {
     JobEntry new_job;
     new_job.command = cmd;
     new_job.create_time = time(nullptr);
-    new_job.pid = getpid(); // maybe change
+    new_job.pid = pid; // maybe change
     new_job.job_id = jobs_list.empty() ? 1 : (jobs_list.back().job_id + 1);
 
     // the list sorted by job_id
