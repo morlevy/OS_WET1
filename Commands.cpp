@@ -50,6 +50,7 @@ string _trim(const std::string &s)
     return _rtrim(_ltrim(s));
 }
 
+
 int _parseCommandLine(const char *cmd_line, char **args)
 {
     FUNC_ENTRY()
@@ -96,14 +97,14 @@ void _removeBackgroundSign(char *cmd_line)
 
 // TODO: Add your implementation for classes in Commands.h
 
-vector<string> splitString(string s)
+vector<string> splitString(string s, char token)
 {
     vector<string> v;
     string temp = "";
     for (int i = 0; i < s.length(); ++i)
     {
 
-        if (s[i] == ' ')
+        if (s[i] == token)
         {
             v.push_back(temp);
             temp = "";
@@ -120,7 +121,7 @@ vector<string> splitString(string s)
 void ChangePromptCommand::execute()
 {
     SmallShell &smash = SmallShell::getInstance();
-    vector<string> params = splitString(cmd_line);
+    vector<string> params = splitString(cmd_line, ' ');
     if (params.size() == 1)
     {
         smash.current_prompt = "smash";
@@ -136,10 +137,80 @@ void ShowPidCommand::execute()
     std::cout << "smash pid is " << getpid() << endl;
 }
 
+bool pipe_to_stderr(string cmd, int index){
+    int i = index + 1;
+    while(cmd.at(i) == ' '){
+        i++;
+    }
+    if (cmd.at(i)=='&'){
+        return i;
+    }
+    return 0;
+}
+
+void PipeCommand::execute() {
+    int index = cmd_line.find('|');
+    int index2 = pipe_to_stderr(cmd_line,index);
+    int pipe_arr[2];
+    SmallShell &smash = SmallShell::getInstance();
+    if(pipe(pipe_arr) == -1){
+        perror("smash error: pipe failed");
+    }
+
+    int pid_first = fork();
+    if(pid_first == -1){
+        perror("smash error: fork failed");
+    }
+    if(pid_first == 0){
+        if(setpgrp() == -1){
+            perror("smash error: setpgrp failed");
+        }
+        if(close(pipe_arr[READ_PIPE]) == -1) { //disable reading
+            perror("smash error: close failed");
+        }
+        if(index2){
+            if (dup2(pipe_arr[WRITE_PIPE], STD_ERROR_CHANNEL) == -1) { //redirect stderr to write channel
+                perror("smash error: dup2 failed");
+            }
+        }else {
+            if (dup2(pipe_arr[WRITE_PIPE], STD_OUT_CHANNEL) == -1) { //redirect stdout to write channel
+                perror("smash error: dup2 failed");
+            }
+            smash.executeCommand(cmd_line.substr(0, index - 1).c_str());
+        }
+    }
+    waitpid(pid_first, nullptr, 0);
+    int pid_second = fork();
+    if(pid_second == -1){
+        perror("smash error: fork failed");
+    }
+    if(pid_second == 0){ //child
+        if(setpgrp() == -1){
+            perror("smash error: setpgrp failed");
+        }
+        if(close(pipe_arr[WRITE_PIPE]) == -1){ //disable writing
+            perror("smash error: close failed");
+        }
+        if(dup2(pipe_arr[READ_PIPE],STD_IN_CHANNEL) == -1){
+            perror("smash error: dup2 failed"); //redirect stdin to read channel
+        }
+        smash.executeCommand(cmd_line.substr(index2+1,cmd_line.length()).c_str());
+    }
+    if(close(pipe_arr[READ_PIPE]) == -1) {
+        perror("smash error: close failed");
+    }
+    if(close(pipe_arr[WRITE_PIPE]) == -1){
+        perror("smash error: close failed");
+    }
+    if(waitpid(pid_second, nullptr,0) == -1){
+        perror("smash error: waitpid failed");
+    }
+}
+
 void GetCurrDirCommand::execute()
 {
     char cwd[PATH_MAX];
-    if (getcwd(cwd, PATH_MAX) == NULL)
+    if (getcwd(cwd, PATH_MAX) == NULL) //TODO maybe change to -1
     {
         perror("smash error: getcwd failed");
     }
@@ -151,7 +222,7 @@ void GetCurrDirCommand::execute()
 
 void BackgroundCommand::execute()
 {
-    vector<string> params = splitString(cmd_line);
+    vector<string> params = splitString(cmd_line, ' ');
     SmallShell &smash = SmallShell::getInstance();
 
     // too many arguments
@@ -221,9 +292,9 @@ void ChangeDirCommand::execute()
     string path;
     if (getcwd(cwd, PATH_MAX) == NULL)
     {
-        // error
+        perror("smash error: getcwd failed");
     }
-    vector<string> params = splitString(cmd_line);
+    vector<string> params = splitString(cmd_line, ' ');
     if (params.size() > 2)
     {
         perror("smash error: cd: too many arguments");
@@ -264,7 +335,7 @@ void JobsCommand::execute()
 void KillCommand::execute()
 {
     SmallShell &smash = SmallShell::getInstance();
-    vector<string> params = splitString(cmd_line);
+    vector<string> params = splitString(cmd_line, ' ');
 
     if (params.size() != 3)
     {
@@ -303,18 +374,24 @@ void KillCommand::execute()
 
 void ExternalCommand::execute(){
     SmallShell &smash = SmallShell::getInstance();
-    vector<string> params = splitString(cmd_line);
-    bool is_background = params.back() == "&";
+    vector<string> params = splitString(cmd_line, ' ');
+    bool is_background = params.back() == "&" || (params.back()).back() == '&';
     int pid = fork();
+    if(pid == -1){
+        perror("smash error: fork failed");
+    }
 
     if (pid == 0){ //child
-        char command[COMMAND_ARGS_MAX_LENGTH];
+        if(setpgrp() == -1){
+            perror("smash error: setpgrp failed");
+        }
+        char command[COMMAND_ARGS_MAX_LENGTH] = {};
         cmd_line.copy(command , cmd_line.length());
         _removeBackgroundSign(command);
         char* argv[4] = {"/bin/bash","-c",command, nullptr};
 
         if(execv(argv[0],argv)==-1){
-            perror("smash: execv failed");
+            perror("smash error: execv failed");
             exit(1);
         }
         return;
@@ -335,7 +412,7 @@ void ExternalCommand::execute(){
 void ForegroundCommand::execute()
 {
     SmallShell &smash = SmallShell::getInstance();
-    vector<string> params = splitString(cmd_line);
+    vector<string> params = splitString(cmd_line, ' ');
 
     string fg_cmd_line;
     pid_t fg_pid;
@@ -399,7 +476,7 @@ void ForegroundCommand::execute()
 void QuitCommand::execute() {
     //job list kill
     SmallShell &smash = SmallShell::getInstance();
-    vector<string> params = splitString(cmd_line);
+    vector<string> params = splitString(cmd_line, ' ');
     if (params.size() != 2 || params[1] != "kill")
     {
         smash.quit = true;
@@ -413,8 +490,9 @@ void QuitCommand::execute() {
 
 void TailCommand::execute() {
     SmallShell &smash = SmallShell::getInstance();
-    vector<string> params = splitString(cmd_line);
+    vector<string> params = splitString(cmd_line, ' ');
     long N = 10;
+
     string path;
     if (params.size()>3) //checking paramters
     {
@@ -486,7 +564,7 @@ void TailCommand::execute() {
 
 void TouchCommand::execute() {
     SmallShell &smash = SmallShell::getInstance();
-    vector<string> params = splitString(cmd_line);
+    vector<string> params = splitString(cmd_line, ' ');
 
     //checking format of parameters
     if (params.size() > 3)
@@ -531,6 +609,37 @@ void TouchCommand::execute() {
     if (res == -1)
     {
         perror("smash error: utime failed");
+    }
+}
+
+void RedirectionCommand::execute() { //">>" append
+    SmallShell &smash = SmallShell::getInstance();
+    string cmd_s = _trim(string(cmd_line));
+    vector<string> request = splitString(cmd_s, REDIRECTION_CHAR);
+
+    int old_fd = dup(STD_OUT_CHANNEL);
+    if (old_fd == -1) {
+        perror("smash error: dup failed");
+        return;
+    }
+    string data = request[-1];
+    int new_fd = open(data.c_str(), O_CREAT);
+    if (new_fd == -1){
+        perror("smash open: dup failed");
+        return;
+    }
+    int res = request.size() == 2 ? dup2(STD_OUT_CHANNEL, new_fd) : dup3(STD_OUT_CHANNEL, new_fd, O_APPEND); //swap between standard out put to the file fd
+    if (res == -1)
+    {
+        perror("smash open: dup failed"); //might need to print dup2 or dup3 :/
+    }
+
+    smash.CreateCommand(request[0].c_str())->execute();
+
+    res = dup2(STD_OUT_CHANNEL, old_fd);
+    if (res == -1)
+    {
+        perror("smash open: dup2 failed"); //might need to print dup2 or dup3 :/
     }
 }
 
@@ -647,6 +756,10 @@ JobsList::JobEntry * JobsList::getLastStoppedJob(int *jobId)
     }
 }
 
+// IO redirection commands
+
+
+
 SmallShell::SmallShell()
 {
     // TODO: add your implementation
@@ -663,6 +776,17 @@ SmallShell::~SmallShell()
 Command *SmallShell::CreateCommand(const char *cmd_line)
 {
     // For example:
+    string cmd_s = _trim(string(cmd_line));
+
+    if (std::find(cmd_s.begin(), cmd_s.end(), REDIRECTION_CHAR) != cmd_s.end())
+    {
+        return new RedirectionCommand(cmd_line);
+    }
+    else return SmallShell::decideCommand(cmd_line);
+}
+
+Command *SmallShell::decideCommand(const char *cmd_line)
+{
     SmallShell &smash = SmallShell::getInstance();
     JobsList* job_list = &smash.jobs;
     char *cwd = (char*)malloc(MAX_INPUT); //TODO change
@@ -673,7 +797,6 @@ Command *SmallShell::CreateCommand(const char *cmd_line)
 
     string cmd_s = _trim(string(cmd_line));
     string firstWord = cmd_s.substr(0, cmd_s.find_first_of(" \n"));
-
     if (firstWord.compare("pwd") == 0)
     {
         return new GetCurrDirCommand(cmd_line);

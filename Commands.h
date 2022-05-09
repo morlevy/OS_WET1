@@ -13,6 +13,12 @@
 
 #define COMMAND_ARGS_MAX_LENGTH (200)
 #define COMMAND_MAX_ARGS (20)
+#define READ_PIPE (0)
+#define WRITE_PIPE (1)
+#define STD_ERROR_CHANNEL (2)
+#define STD_OUT_CHANNEL (1)
+#define STD_IN_CHANNEL (0)
+#define REDIRECTION_CHAR ('>')
 
 
 class Command {
@@ -43,15 +49,14 @@ public:
 class PipeCommand : public Command {
     // TODO: Add your data members
 public:
-    PipeCommand(const char* cmd_line); //
+    PipeCommand(const char* cmd_line) : Command(cmd_line){}; //
     virtual ~PipeCommand() {}
     void execute() override;
 };
 
 class RedirectionCommand : public Command {
-    // TODO: Add your data members
 public:
-    explicit RedirectionCommand(const char* cmd_line);
+    RedirectionCommand(const char* cmd_line) : Command(cmd_line){};
     virtual ~RedirectionCommand() {}
     void execute() override;
     //void prepare() override;
@@ -197,6 +202,7 @@ public:
         return instance;
     }
     ~SmallShell();
+    Command *decideCommand(const char* cmd_line);
     void executeCommand(const char* cmd_line);
     // TODO: add extra methods as needed
 };
