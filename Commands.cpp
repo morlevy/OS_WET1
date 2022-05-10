@@ -424,7 +424,7 @@ void ForegroundCommand::execute()
     string fg_cmd_line;
     pid_t fg_pid;
     int job_id = -1;
-    if (params.size() > 1)
+    if (params.size() > 2)
     {
         perror("smash error: fg: invalid arguments");
         return;
@@ -441,8 +441,10 @@ void ForegroundCommand::execute()
         else
         {
             fg_cmd_line = smash.jobs.jobs_list.back().command->cmd_line;
+            JobsList::JobEntry *job = &smash.jobs.jobs_list.back();
             fg_pid = smash.jobs.jobs_list.back().pid;
             job_id = smash.jobs.jobs_list.back().job_id;
+            smash.foreground = job;
             // need to make sure that the big job id is indeed at the back, but probably it is
         }
     }
@@ -457,7 +459,6 @@ void ForegroundCommand::execute()
         {
             int job_id = atoi(params.at(1).c_str());
             JobsList::JobEntry *job = smash.jobs.getJobById(job_id);
-
             if (job == nullptr)
             { // checking if
                 fprintf(stderr, "smash error: kill: job-id <%d> does not exist", job_id, strerror(errno));
@@ -465,6 +466,8 @@ void ForegroundCommand::execute()
             }
             fg_cmd_line = job->command->cmd_line;
             fg_pid = job->pid;
+            smash.jobs.removeJobById(job_id);
+            smash.foreground = job;
         }
     }
 
@@ -476,7 +479,7 @@ void ForegroundCommand::execute()
         return;
     }
     //maybe check return value? no error message explicit
-    waitpid(fg_pid, nullptr, 0); //that's what I understood for the start_loc and options
+    waitpid(fg_pid, nullptr, WUNTRACED); //that's what I understood for the start_loc and options
     smash.jobs.removeJobById(job_id);
 }
 
@@ -574,7 +577,7 @@ void TouchCommand::execute() {
     vector<string> params = splitString(cmd_line, ' ');
 
     //checking format of parameters
-    if (params.size() > 3)
+    if (params.size() != 3)
     {
         perror("smash error: touch: invalid arguments");
         return;
@@ -619,7 +622,7 @@ void TouchCommand::execute() {
     }
 }
 
-void RedirectionCommand::execute() { //">>" append
+void RedirectionCommand::execute() { //">>" append //remove background sign
     SmallShell &smash = SmallShell::getInstance();
     string cmd_s = _trim(string(cmd_line));
     vector<string> request = splitString(cmd_s, REDIRECTION_CHAR);
@@ -630,12 +633,12 @@ void RedirectionCommand::execute() { //">>" append
         return;
     }
     string data = request[-1];
-    int new_fd = open(data.c_str(), O_CREAT);
+    int new_fd = open(data.c_str(), O_CREAT | (request.size()==2 ? O_APPEND | ));
     if (new_fd == -1){
         perror("smash open: dup failed");
         return;
     }
-    int res = request.size() == 2 ? dup2(STD_OUT_CHANNEL, new_fd) : dup3(STD_OUT_CHANNEL, new_fd, O_APPEND); //swap between standard out put to the file fd
+    int res = request.size() == 3 ? dup2(STD_OUT_CHANNEL, new_fd) : dup3(STD_OUT_CHANNEL, new_fd, O_APPEND); //swap between standard out put to the file fd
     if (res == -1)
     {
         perror("smash open: dup failed"); //might need to print dup2 or dup3 :/
@@ -687,11 +690,12 @@ void JobsList::insertJob(JobEntry *new_job) {
             return;
         }
     }
+    jobs_list.push_back(*new_job);
 }
 
 void JobsList::printJobsList()
 {
-    for (vector<JobEntry>::iterator it = jobs_list.begin(); it < jobs_list.end(); it++)
+    for (vector<JobEntry>::iterator it = jobs_list.begin(); it != jobs_list.end(); it++)
     {
         //std::cout << "it->job_id: " << it->job_id << endl;
         //std::cout << "it->command->cmd_line: " << it->command->cmd_line <<endl;
@@ -721,23 +725,22 @@ void JobsList::killAllJobs()
 
 void JobsList::removeFinishedJobs()
 {
+    if( jobs_list.empty())
+        return;
     vector<JobsList::JobEntry>::iterator it = jobs_list.begin();
-
     while(it != jobs_list.end())
     {
-        if (it->is_stopped)
-        {
-            removeJobById(it->job_id);
-            removeFinishedJobs();
-            return;
+        if( !it->is_stopped && waitpid(it->pid , nullptr, WNOHANG) > 0){
+            jobs_list.erase(it);
         }
-        it++;
+        else
+            it++;
     }
 }
 JobsList::JobEntry * JobsList::getJobById(int jobId)
 {
     for(vector<JobEntry>::iterator it = jobs_list.begin(); it < jobs_list.end(); it++){
-        if(it->job_id = jobId){
+        if(it->job_id == jobId){
             return it.base(); // im not sure about this.
         }
     }
