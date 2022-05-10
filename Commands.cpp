@@ -145,7 +145,7 @@ bool pipe_to_stderr(string cmd, int index){
     if (cmd.at(i)=='&'){
         return i;
     }
-    return 0;
+    return -1;
 }
 
 void PipeCommand::execute() {
@@ -168,7 +168,7 @@ void PipeCommand::execute() {
         if(close(pipe_arr[READ_PIPE]) == -1) { //disable reading
             perror("smash error: close failed");
         }
-        if(index2){
+        if(index2>0){
             if (dup2(pipe_arr[WRITE_PIPE], STD_ERROR_CHANNEL) == -1) { //redirect stderr to write channel
                 perror("smash error: dup2 failed");
             }
@@ -176,7 +176,8 @@ void PipeCommand::execute() {
             if (dup2(pipe_arr[WRITE_PIPE], STD_OUT_CHANNEL) == -1) { //redirect stdout to write channel
                 perror("smash error: dup2 failed");
             }
-            smash.executeCommand(cmd_line.substr(0, index - 1).c_str());
+            int i = pipe_to_stderr(cmd_line,0); //removing the & from the beginning
+            smash.executeCommand(cmd_line.substr(i + 1, index - 1).c_str());
         }
     }
     waitpid(pid_first, nullptr, 0);
@@ -633,15 +634,15 @@ void RedirectionCommand::execute() { //">>" append //remove background sign
         return;
     }
     string data = request[-1];
-    int new_fd = open(data.c_str(), O_CREAT | (request.size()==2 ? O_APPEND | ));
+    int new_fd = open(data.c_str(), O_CREAT | (request.size()==3 ? O_APPEND : O_TRUNC) | S_IRUSR | S_IWUSR | S_IRWXG | S_IRWXO);
     if (new_fd == -1){
-        perror("smash open: dup failed");
+        perror("smash error: open failed");
         return;
     }
     int res = request.size() == 3 ? dup2(STD_OUT_CHANNEL, new_fd) : dup3(STD_OUT_CHANNEL, new_fd, O_APPEND); //swap between standard out put to the file fd
     if (res == -1)
     {
-        perror("smash open: dup failed"); //might need to print dup2 or dup3 :/
+        perror("smash error: dup failed"); //might need to print dup2 or dup3 :/
     }
 
     smash.CreateCommand(request[0].c_str())->execute();
@@ -821,7 +822,10 @@ Command *SmallShell::decideCommand(const char *cmd_line)
 
     string cmd_s = _trim(string(cmd_line));
     string firstWord = cmd_s.substr(0, cmd_s.find_first_of(" \n"));
-    if (firstWord.compare("pwd") == 0)
+    if(std::find(cmd_s.begin(), cmd_s.end(), '|') != cmd_s.end()){
+        return new PipeCommand(cmd_line);
+    }
+    else if (firstWord.compare("pwd") == 0)
     {
         return new GetCurrDirCommand(cmd_line);
     }
@@ -857,11 +861,11 @@ Command *SmallShell::decideCommand(const char *cmd_line)
     {
         return new QuitCommand(cmd_line,job_list);
     }
-    else if (firstWord == "Tail")
+    else if (firstWord == "tail")
     {
         return new TailCommand(cmd_line);
     }
-    else if (firstWord == "Touch")
+    else if (firstWord == "touch")
     {
         return new TouchCommand(cmd_line);
     }
