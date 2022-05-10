@@ -13,12 +13,12 @@
 
 #define COMMAND_ARGS_MAX_LENGTH (200)
 #define COMMAND_MAX_ARGS (20)
-#define READ_PIPE (0)
-#define WRITE_PIPE (1)
-#define STD_ERROR_CHANNEL (2)
-#define STD_OUT_CHANNEL (1)
-#define STD_IN_CHANNEL (0)
-#define REDIRECTION_CHAR ('>')
+#define READ_PIPE 0
+#define WRITE_PIPE 1
+#define STD_ERROR_CHANNEL 2
+#define STD_OUT_CHANNEL 1
+#define STD_IN_CHANNEL 0
+#define REDIRECTION_CHAR '>'
 
 
 class Command {

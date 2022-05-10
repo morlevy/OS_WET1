@@ -137,7 +137,7 @@ void ShowPidCommand::execute()
     std::cout << "smash pid is " << getpid() << endl;
 }
 
-bool pipe_to_stderr(string cmd, int index){
+int pipe_to_stderr(string cmd, int index){
     int i = index + 1;
     while(cmd.at(i) == ' '){
         i++;
@@ -155,15 +155,18 @@ void PipeCommand::execute() {
     SmallShell &smash = SmallShell::getInstance();
     if(pipe(pipe_arr) == -1){
         perror("smash error: pipe failed");
+        return;
     }
 
     int pid_first = fork();
     if(pid_first == -1){
         perror("smash error: fork failed");
+        return;
     }
     if(pid_first == 0){
         if(setpgrp() == -1){
             perror("smash error: setpgrp failed");
+            return;
         }
         if(close(pipe_arr[READ_PIPE]) == -1) { //disable reading
             perror("smash error: close failed");
@@ -178,6 +181,7 @@ void PipeCommand::execute() {
             }
             int i = pipe_to_stderr(cmd_line,0); //removing the & from the beginning
             smash.executeCommand(cmd_line.substr(i + 1, index - 1).c_str());
+            exit(0);
         }
     }
     waitpid(pid_first, nullptr, 0);
@@ -196,6 +200,7 @@ void PipeCommand::execute() {
             perror("smash error: dup2 failed"); //redirect stdin to read channel
         }
         smash.executeCommand(cmd_line.substr(index2+1,cmd_line.length()).c_str());
+        exit(0);
     }
     if(close(pipe_arr[READ_PIPE]) == -1) {
         perror("smash error: close failed");
@@ -633,16 +638,16 @@ void RedirectionCommand::execute() { //">>" append //remove background sign
         perror("smash error: dup failed");
         return;
     }
-    string data = request[-1];
+    string data = request.back();
     int new_fd = open(data.c_str(), O_CREAT | (request.size()==3 ? O_APPEND : O_TRUNC) | S_IRUSR | S_IWUSR | S_IRWXG | S_IRWXO);
     if (new_fd == -1){
         perror("smash error: open failed");
         return;
     }
-    int res = request.size() == 3 ? dup2(STD_OUT_CHANNEL, new_fd) : dup3(STD_OUT_CHANNEL, new_fd, O_APPEND); //swap between standard out put to the file fd
+    int res = dup2(STD_OUT_CHANNEL, new_fd);//request.size() == 3 ? dup2(STD_OUT_CHANNEL, new_fd) : dup2(STD_OUT_CHANNEL, new_fd); //swap between standard out put to the file fd
     if (res == -1)
     {
-        perror("smash error: dup failed"); //might need to print dup2 or dup3 :/
+        perror("smash error: dup2 failed"); //might need to print dup2 or dup3 :/
     }
 
     smash.CreateCommand(request[0].c_str())->execute();
