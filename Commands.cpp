@@ -329,6 +329,7 @@ void ChangeDirCommand::execute()
 void JobsCommand::execute()
 {
     SmallShell &smash = SmallShell::getInstance();
+    smash.jobs.removeFinishedJobs();
     smash.jobs.printJobsList();
 }
 
@@ -409,6 +410,7 @@ void ExternalCommand::execute(){
         }
         else
         {
+            smash.jobs.removeFinishedJobs();
             smash.jobs.insertJob(job);
         }
     }
@@ -422,7 +424,7 @@ void ForegroundCommand::execute()
     string fg_cmd_line;
     pid_t fg_pid;
     int job_id = -1;
-    if (params.size() > 2)
+    if (params.size() > 1)
     {
         perror("smash error: fg: invalid arguments");
         return;
@@ -691,7 +693,11 @@ void JobsList::printJobsList()
 {
     for (vector<JobEntry>::iterator it = jobs_list.begin(); it < jobs_list.end(); it++)
     {
-        std::cout << '[' << (it->job_id) << '] ' << (it->command->cmd_line) << ' : ' << it->pid << ' ' // might need to change the command printing
+        //std::cout << "it->job_id: " << it->job_id << endl;
+        //std::cout << "it->command->cmd_line: " << it->command->cmd_line <<endl;
+        //std::cout << "it->pid: " << it->pid << endl;
+        //std::cout << "difftime: " << int(difftime(time(nullptr), it->create_time)) << endl;
+        std::cout << "[" << (it->job_id) << "] " << (it->command->cmd_line) << " : " << it->pid << " " // might need to change the command printing
                   << int(difftime(time(nullptr), it->create_time)) << " secs";
 
         if (it->is_stopped)
@@ -720,7 +726,12 @@ void JobsList::removeFinishedJobs()
     while(it != jobs_list.end())
     {
         if (it->is_stopped)
+        {
             removeJobById(it->job_id);
+            removeFinishedJobs();
+            return;
+        }
+        it++;
     }
 }
 JobsList::JobEntry * JobsList::getJobById(int jobId)
@@ -867,6 +878,9 @@ void SmallShell::executeCommand(const char *cmd_line)
     //then save the child pid which will be the foreground pid
     //when getting ^c or ^z we will use the child pid
     //need to check if this is good
+    SmallShell &smash = SmallShell::getInstance();
+
+    smash.jobs.removeFinishedJobs();
     cmd->execute();
 
     // Please note that you must fork smash process for some commands (e.g., external commands....)
