@@ -422,7 +422,7 @@ void ForegroundCommand::execute()
     string fg_cmd_line;
     pid_t fg_pid;
     int job_id = -1;
-    if (params.size() > 1)
+    if (params.size() > 2)
     {
         perror("smash error: fg: invalid arguments");
         return;
