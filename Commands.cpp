@@ -148,70 +148,99 @@ int pipe_to_stderr(string cmd, int index){
     return -1;
 }
 
-void PipeCommand::execute() {
-    int index = cmd_line.find('|');
-    int index2 = pipe_to_stderr(cmd_line,index);
-    int pipe_arr[2];
+void PipeCommand::execute() { //TODO check our code
     SmallShell &smash = SmallShell::getInstance();
-    if(pipe(pipe_arr) == -1){
+    size_t index = this->cmd_line.find('|');
+
+    int write_location = WRITE_PIPE;
+    if (this->cmd_line.at(index + 1) == '&') {
+        write_location = STD_ERROR_CHANNEL;
+    }
+
+    int pipe_arr[2];
+    if (pipe(pipe_arr) == -1) {
         perror("smash error: pipe failed");
         return;
     }
 
     int pid_first = fork();
-    if(pid_first == -1){
+    if (pid_first == -1) {
         perror("smash error: fork failed");
         return;
     }
-    if(pid_first == 0){
-        if(setpgrp() == -1){
+
+    if (pid_first == 0) { //child
+        if (setpgrp() == -1) {
             perror("smash error: setpgrp failed");
             return;
         }
-        if(close(pipe_arr[READ_PIPE]) == -1) { //disable reading
+
+        if (dup2(pipe_arr[WRITE_PIPE], write_location) == -1) {
+            perror("smash error: dup2 failed");
+            return;
+        }
+        if (close(pipe_arr[READ_PIPE]) == -1) {
             perror("smash error: close failed");
+            return;
         }
-        if(index2>0){
-            if (dup2(pipe_arr[WRITE_PIPE], STD_ERROR_CHANNEL) == -1) { //redirect stderr to write channel
-                perror("smash error: dup2 failed");
-            }
-        }else {
-            if (dup2(pipe_arr[WRITE_PIPE], STD_OUT_CHANNEL) == -1) { //redirect stdout to write channel
-                perror("smash error: dup2 failed");
-            }
-            int i = pipe_to_stderr(cmd_line,0); //removing the & from the beginning
-            smash.executeCommand(cmd_line.substr(i + 1, index - 1).c_str());
-            exit(0);
-        }
-    }
-    waitpid(pid_first, nullptr, 0);
-    int pid_second = fork();
-    if(pid_second == -1){
-        perror("smash error: fork failed");
-    }
-    if(pid_second == 0){ //child
-        if(setpgrp() == -1){
-            perror("smash error: setpgrp failed");
-        }
-        if(close(pipe_arr[WRITE_PIPE]) == -1){ //disable writing
+        if (close(pipe_arr[WRITE_PIPE]) == -1) {
             perror("smash error: close failed");
+            return;
         }
-        if(dup2(pipe_arr[READ_PIPE],STD_IN_CHANNEL) == -1){
-            perror("smash error: dup2 failed"); //redirect stdin to read channel
-        }
-        smash.executeCommand(cmd_line.substr(index2+1,cmd_line.length()).c_str());
+        const char* cmd = cmd_line.substr(0, index).c_str();
+        smash.executeCommand(cmd);
         exit(0);
     }
-    if(close(pipe_arr[READ_PIPE]) == -1) {
-        perror("smash error: close failed");
-    }
-    if(close(pipe_arr[WRITE_PIPE]) == -1){
-        perror("smash error: close failed");
-    }
-    if(waitpid(pid_second, nullptr,0) == -1){
+
+    if (waitpid(pid_first, nullptr, 0) == -1) {
         perror("smash error: waitpid failed");
+        return;
+    }
+
+    int pid_second = fork();
+    if (pid_second == -1) {
+        perror("smash error: fork failed");
+        return;
+    }
+
+    if (pid_second == 0) {
+        if (setpgrp() == -1) {
+            perror("smash error: setpgrp failed");
+            return;
+        }
+        if (dup2(pipe_arr[READ_PIPE], READ_PIPE) == -1) {
+            perror("smash error: dup2 failed");
+            return;
+        }
+        if (close(pipe_arr[READ_PIPE]) == -1) {
+            perror("smash error: close failed");
+            return;
+        }
+        if (close(pipe_arr[WRITE_PIPE]) == -1) {
+            perror("smash error: close failed");
+            return;
+        }
+        const char* cmd = cmd_line.substr(index + 1, cmd_line.size()).c_str();
+        smash.executeCommand(cmd);
+        exit(0);
+    }
+
+    if (close(pipe_arr[READ_PIPE]) == -1) {
+        perror("smash error: close failed");
+        return;
+    }
+    if (close(pipe_arr[WRITE_PIPE]) == -1) {
+        perror("smash error: close failed");
+        return;
+    }
+
+    if (waitpid(pid_second, nullptr, 0) == -1) {
+        perror("smash error: waitpid failed");
+        return;
     }
 }
+
+
 
 void GetCurrDirCommand::execute()
 {
@@ -269,25 +298,29 @@ void BackgroundCommand::execute()
 
         kill(job->pid, SIGCONT);
         job->is_stopped = false;
+        std::cout << job->command->cmd_line.c_str() << " : " << job->pid << endl;
     }
     else
     { // no parameters
         vector<JobsList::JobEntry> &job_list = smash.jobs.jobs_list;
         vector<JobsList::JobEntry>::iterator it = job_list.begin();
-        bool not_found = true;
-
-        while (it != job_list.end() && not_found)
+        JobsList::JobEntry *temp = nullptr;
+        while (it != job_list.end())
         { // find stopped job
             if (it->is_stopped)
             {
-                not_found = false;
-                kill(it->pid, SIGCONT);
-                return;
+                temp = it.base();
             }
             it++;
         }
-
-        perror("smash error: bg: there is no stopped jobs to resume");
+        if (temp == nullptr)
+        {
+            perror("smash error: bg: there is no stopped jobs to resume");
+        }
+        kill(temp->pid, SIGCONT);
+        temp->is_stopped = false;
+        std::cout << temp->command->cmd_line.c_str() << " : " << temp->pid << endl;
+        return;
     }
 }
 
@@ -397,11 +430,10 @@ void ExternalCommand::execute(){
         _removeBackgroundSign(command);
         char* argv[4] = {"/bin/bash","-c",command, nullptr};
 
-        if(execv(argv[0],argv)==-1){
-            perror("smash error: execv failed");
-            exit(1);
-        }
-        return;
+        execv(argv[0],argv);
+        perror("smash error: execv failed");
+        exit(1);
+
     } else { //father code
         JobsList::JobEntry *job = new JobsList::JobEntry(this, pid);//smash.jobs.addJob(this, pid);
         job->job_id = smash.jobs.jobs_list.empty() ? 1 : (smash.jobs.jobs_list.back().job_id + 1);
@@ -478,15 +510,27 @@ void ForegroundCommand::execute()
     }
 
     // sending the job to the foreground
-    std::cout << fg_cmd_line << endl;
-    if (kill(fg_pid, SIGCONT) == -1)
+    std::cout << fg_cmd_line << " : " << fg_pid << endl;
+    if (smash.foreground->is_stopped  && kill(fg_pid, SIGCONT) == -1)
     {
         perror("smash error: SIGCONT failed");
         return;
     }
+    int status = 0;
     //maybe check return value? no error message explicit
-    waitpid(fg_pid, nullptr, WUNTRACED); //that's what I understood for the start_loc and options
-    smash.jobs.removeJobById(job_id);
+    if (waitpid(fg_pid, &status, WUNTRACED) == -1)    //that's what I understood for the start_loc and options
+        perror("smash error: waitpid failed");
+
+    if(WIFSTOPPED(status)) {
+        if (smash.foreground )
+        {
+            smash.foreground->is_stopped = true;
+            smash.jobs.insertJob(smash.foreground);
+            smash.foreground = nullptr;
+        }
+    }
+    else
+        smash.jobs.removeJobById(job_id);
 }
 
 void QuitCommand::execute() {
@@ -526,7 +570,7 @@ void TailCommand::execute() {
             return;
         }
         else {
-            N = converted;
+            N = -converted;
         }
         path = params.at(2);
     }
@@ -542,10 +586,10 @@ void TailCommand::execute() {
     }
 
     string line;
-    long line_size;
-    string input ;
+    long line_size = 0;
+    char input;
     int count = 0;
-    long write_res;
+    long write_res = -1;
     while(count<N) //going through N lines in the file
     {
         long read_size = read(fd, (void *)&input, 1);
@@ -556,12 +600,12 @@ void TailCommand::execute() {
         }
         if (read_size == 0) return;
 
-        if (input == "\n")
+        if (input == '\n')
         {
             count++;
             line_size++;
             (line) += "\n";
-            write_res = write(1, (void *) &line, line_size); //pretty sure 1 is the fd to write to but should check later.
+            write_res = write(STD_OUT_CHANNEL, (void *) line.c_str(), line_size); //pretty sure 1 is the fd to write to but should check later.
             if (write_res == -1)
             {
                 perror("smash error: write failed");
@@ -690,6 +734,7 @@ void JobsList::insertJob(JobEntry *new_job) {
     }
     for (vector<JobEntry>::iterator it = jobs_list.begin(); it < jobs_list.end(); it++)
     {
+        if (new_job->job_id == it->job_id) return;
         if (new_job->job_id < it->job_id)
         {
             jobs_list.insert(it, *new_job);

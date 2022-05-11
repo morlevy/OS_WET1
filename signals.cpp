@@ -8,16 +8,24 @@ using namespace std;
 void ctrlZHandler(int sig_num) {
     SmallShell &smash = SmallShell::getInstance();
     cout << "smash: got ctrl-Z\n";
-    if (!smash.foreground || smash.foreground->pid == -1) return;
-    int res = kill(smash.foreground->pid, SIGSTOP);
+    //cout << "smash.foreground->is_stopped: " << smash.foreground->is_stopped << endl;
+    //cout << "smash.foreground->pid: " << smash.foreground->pid << endl;
+    if (!smash.foreground || smash.foreground->pid == -1){
+      //  cout << "returned without kill" << endl;
+        return;
+    }
+    JobsList::JobEntry *job = smash.foreground;
+    int job_pid = job->pid;
+    int res = kill(job_pid, SIGSTOP);
     if (res == -1) //check error handle requirement
     {
         perror("smash error: kill failed");
         return;
     }
     smash.foreground->is_stopped = true;
-    smash.jobs.insertJob(smash.foreground);
-    cout << "smash: process " << smash.foreground->pid << " was stopped\n";
+    smash.jobs.insertJob(job);
+    cout << "smash: process " << job_pid << " was stopped\n";
+    smash.foreground = nullptr;
 }
 
 void ctrlCHandler(int sig_num) {
