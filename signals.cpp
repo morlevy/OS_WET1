@@ -19,7 +19,7 @@ void ctrlZHandler(int sig_num) {
     int res = kill(job_pid, SIGSTOP);
     if (res == -1) //check error handle requirement
     {
-        perror("smash error: kill failed");
+        perror("smash error: kill failed\n");
         return;
     }
     smash.foreground->is_stopped = true;
@@ -35,9 +35,10 @@ void ctrlCHandler(int sig_num) {
     int res = kill(smash.foreground->pid, SIGKILL);
     if (res == -1) //check error handle requirement
     {
-        perror("smash error: kill failed");
+        perror("smash error: kill failed\n");
     }
     cout << "smash: process " << smash.foreground->pid << " was killed\n";
+    smash.foreground = nullptr;
 }
 
 void alarmHandler(int sig_num) {
