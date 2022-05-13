@@ -7,13 +7,13 @@
 
 int main(int argc, char* argv[]) {
     if(signal(SIGTSTP , ctrlZHandler)==SIG_ERR) {
-        perror("smash error: failed to set ctrl-Z handler");
+        perror("smash error: failed to set ctrl-Z handler\n");
     }
     if(signal(SIGINT , ctrlCHandler)==SIG_ERR) {
-        perror("smash error: failed to set ctrl-C handler");
+        perror("smash error: failed to set ctrl-C handler\n");
     }
     if (signal(SIGALRM, alarmHandler)==SIG_ERR){
-        perror("smash error: failed to set alarm handler"); //check if need to print another error
+        perror("smash error: failed to set alarm handler\n"); //check if need to print another error
     }
 
     //TODO: setup sig alarm handler

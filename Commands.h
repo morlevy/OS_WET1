@@ -185,6 +185,21 @@ public:
     virtual ~TouchCommand() {}
     void execute() override;
 };
+/*
+class TimeOutCommand : Command{
+    explicit TimeOutCommand(const char* cmd_line) : Command(cmd_line) {};
+    virtual ~TimeOutCommand(){}
+    void execute() override;
+};
+
+class TimeOutObject {
+    int duration;
+    pid_t pid;
+
+    TimeOutObject(int duration, pid_t pid): duration(duration), pid(pid){};
+    ~TimeOutObject() = default;
+};*/
+
 
 
 class SmallShell {
@@ -198,6 +213,7 @@ public:
     JobsList jobs;
     JobsList::JobEntry* foreground;
     bool quit = false;
+    //std::vector<TimeOutObject> timeout_list;
 
     Command *CreateCommand(const char* cmd_line);
     SmallShell(SmallShell const&)      = delete; // disable copy ctor

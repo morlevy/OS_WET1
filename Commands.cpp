@@ -156,10 +156,12 @@ int pipe_to_stderr(string cmd, int index){
 void PipeCommand::execute() { //TODO check our code
     SmallShell &smash = SmallShell::getInstance();
     size_t index = this->cmd_line.find('|');
+    bool flag = false;
 
     int write_location = WRITE_PIPE;
     if (this->cmd_line.at(index + 1) == '&') {
         write_location = STD_ERROR_CHANNEL;
+        flag = true;
     }
 
     int pipe_arr[2];
@@ -192,8 +194,12 @@ void PipeCommand::execute() { //TODO check our code
             perror("smash error: close failed\n");
             return;
         }
+        // TODO Maybe change
+        /*
         const char* cmd = cmd_line.substr(0, index).c_str();
         smash.executeCommand(cmd);
+         */
+        smash.executeCommand(cmd_line.substr(0, index).c_str());
         exit(0);
     }
 
@@ -225,8 +231,13 @@ void PipeCommand::execute() { //TODO check our code
             perror("smash error: close failed\n");
             return;
         }
-        const char* cmd = cmd_line.substr(index + 1, cmd_line.size()).c_str();
+        int i = flag ? 2 : 1;
+        //TODO maybe change
+        /*
+        const char* cmd = cmd_line.substr(index + i, cmd_line.size()).c_str();
         smash.executeCommand(cmd);
+        */
+        smash.executeCommand(cmd_line.substr(index + i, cmd_line.size()).c_str());
         exit(0);
     }
 
@@ -695,36 +706,6 @@ void TailCommand::execute() {
     if (close(fd)==-1)
         perror("smash error: close failed\n");
 
-    //while(count<N) //going through N lines in the file
-    //{
-    //    long read_size = read(fd, (void *)&input, 1);
-    //    if (read_size == -1)
-    //    {
-    //        perror("smash error: read failed\n");
-    //        return;
-    //    }
-    //    if (read_size == 0) return;
-    //
-    //    if (input == '\n')
-    //    {
-    //        count++;
-    //        line_size++;
-    //        (line) += "\n";
-    //        write_res = write(STDOUT_FILENO, (void *) line.c_str(), line_size); //pretty sure 1 is the fd to write to but should check later.
-    //        if (write_res == -1)
-    //        {
-    //            perror("smash error: write failed\n");
-    //            return;
-    //        }
-    //        line_size = 0;
-    //        line = "";
-    //    }
-    //    else
-    //    {
-    //        line_size++;
-    //        line += input;
-    //    }
-    //}
 }
 
 void TouchCommand::execute() {
@@ -821,31 +802,25 @@ void RedirectionCommand::execute() { //">>" append //remove background sign
     }
 }
 
+//void TimeOutCommand::execute(){
+//    SmallShell &smash = SmallShell::getInstance();
+//    vector<string> params = splitString(cmd_line, ' ');
+//
+//    smash.CreateCommand(params[2].c_str())->execute();
+//
+//
+//
+//}
+
+
+
 // joblist functions
 
-//JobsList::JobEntry *JobsList::addJob(Command *cmd, pid_t pid, bool isStopped)
-//{
-//    JobEntry *new_job = new JobEntry(cmd, pid, isStopped);
-//    new_job->command = cmd;
-//    new_job->create_time = time(nullptr);
-//    new_job->pid = pid; // maybe change
-//    new_job->job_id = jobs_list.empty() ? 1 : (jobs_list.back().job_id + 1);
-//
-//    // the list sorted by job_id
-//    insertJob(new_job);
-//
-//    return new_job;
-//    //for (vector<JobEntry>::iterator it = jobs_list.begin(); it < jobs_list.end(); it++)
-//    //{
-//    //    if (new_job.job_id < it->job_id)
-//    //    {
-//    //        jobs_list.insert(it, new_job);
-//    //    }
-//    //}
-//}
+
 
 void JobsList::insertJob(JobEntry *new_job) {
     // the list sorted by job_id
+    new_job->create_time = time(nullptr);
     if (jobs_list.empty()) {
         jobs_list.push_back(*new_job);
         return;
@@ -955,12 +930,11 @@ JobsList::JobEntry * JobsList::getLastStoppedJob(int *jobId)
 
 SmallShell::SmallShell()
 {
-    // TODO: add your implementation
+
 }
 
 SmallShell::~SmallShell()
 {
-    // TODO: add your implementation
 }
 
 /**
@@ -1037,6 +1011,10 @@ Command *SmallShell::decideCommand(const char *cmd_line)
     {
         return new TouchCommand(cmd_line);
     }
+    //else if (firstWord == "timeout")
+    //{
+    //    return new TimeOutCommand(cmd_line);
+    //}
     else{
         return new ExternalCommand(cmd_line);
     }
