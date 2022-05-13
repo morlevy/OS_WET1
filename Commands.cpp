@@ -97,7 +97,7 @@ void _removeBackgroundSign(char *cmd_line)
 
 // TODO: Add your implementation for classes in Commands.h
 
-vector<string> splitString(string s, char token)
+vector<string> splitString(string s, char token, bool inner = false)
 {
     string c = _trim(s);
     vector<string> v;
@@ -106,8 +106,9 @@ vector<string> splitString(string s, char token)
     {
         if (c[i] == token)
         {
-            while(i < c.length()-1 && c[i] == token){
+            while( i < c.length()-1 && c[i] == token){
                 i++;
+                if (inner) break;
             }
             v.push_back(_trim(temp));
             temp = "";
@@ -350,7 +351,7 @@ void ChangeDirCommand::execute()
         {
             if (!smash.dir_changed_flag)
             {
-                perror("smash error: cd: OLDPWD not set\n");
+                cerr << ("smash error: cd: OLDPWD not set\n");
                 return;
             }
             path = smash.prev_dir;
@@ -362,7 +363,7 @@ void ChangeDirCommand::execute()
         int return_value = chdir(path.c_str());
         if (return_value == -1)
         {
-            perror("smash error: cd failed\n");
+            perror("smash error: chdir failed");
             return;
         }
         smash.prev_dir = cwd;
@@ -596,7 +597,7 @@ void TailCommand::execute() {
     long N = 10;
 
     string path;
-    if (params.size()>3) //checking paramters
+    if (params.size()>3 || params.size()==1) //checking paramters
     {
         cerr << ("smash error: tail: invalid arguments\n");
         return;
@@ -612,6 +613,11 @@ void TailCommand::execute() {
             return;
         }
         else {
+            if(converted>0)
+            {
+                cerr << ("smash error: tail: invalid arguments\n");
+                return;
+            }
             N = -converted;
         }
         path = params.at(2);
@@ -619,40 +625,54 @@ void TailCommand::execute() {
     else
         path = params.at(1);
 
+    if (N==0) return;
     //getting file descriptor
     int fd = open(path.c_str(),O_RDONLY);
     if (fd == -1)
     {
-        perror("smash error: open failed\n");
+        perror("smash error: open failed");
         return;
     }
 
+    vector<string> output;
+    vector<int> sizes;
     string line;
     long line_size = 0;
     char input;
     int count = 0;
     long write_res = -1;
-    while(count<N) //going through N lines in the file
+    while(true)
     {
         long read_size = read(fd, (void *)&input, 1);
         if (read_size == -1)
         {
-            perror("smash error: read failed\n");
+            perror("smash error: read failed");
             return;
         }
-        if (read_size == 0) return;
+
+        if (read_size == 0) {
+            if (line_size==0) break;
+            if(output.size()==N)
+            {
+                output.erase(output.begin());
+                sizes.erase(sizes.begin());
+            }
+            output.push_back(line);
+            sizes.push_back(line_size);
+            break;
+        }
 
         if (input == '\n')
         {
-            count++;
             line_size++;
             (line) += "\n";
-            write_res = write(STD_OUT_CHANNEL, (void *) line.c_str(), line_size); //pretty sure 1 is the fd to write to but should check later.
-            if (write_res == -1)
+            if(output.size()==N)
             {
-                perror("smash error: write failed\n");
-                return;
+                output.erase(output.begin());
+                sizes.erase(sizes.begin());
             }
+            output.push_back(line);
+            sizes.push_back(line_size);
             line_size = 0;
             line = "";
         }
@@ -662,6 +682,49 @@ void TailCommand::execute() {
             line += input;
         }
     }
+    //print the lines found
+    for (int i = 0; i < sizes.size(); i++) {
+        write_res = write(STDOUT_FILENO, (void *)output[i].c_str(), sizes[i]); //pretty sure 1 is the fd to write to but should check later.
+        if (write_res == -1)
+        {
+            perror("smash error: write failed\n");
+            return;
+        }
+    }
+
+    if (close(fd)==-1)
+        perror("smash error: close failed\n");
+
+    //while(count<N) //going through N lines in the file
+    //{
+    //    long read_size = read(fd, (void *)&input, 1);
+    //    if (read_size == -1)
+    //    {
+    //        perror("smash error: read failed\n");
+    //        return;
+    //    }
+    //    if (read_size == 0) return;
+    //
+    //    if (input == '\n')
+    //    {
+    //        count++;
+    //        line_size++;
+    //        (line) += "\n";
+    //        write_res = write(STDOUT_FILENO, (void *) line.c_str(), line_size); //pretty sure 1 is the fd to write to but should check later.
+    //        if (write_res == -1)
+    //        {
+    //            perror("smash error: write failed\n");
+    //            return;
+    //        }
+    //        line_size = 0;
+    //        line = "";
+    //    }
+    //    else
+    //    {
+    //        line_size++;
+    //        line += input;
+    //    }
+    //}
 }
 
 void TouchCommand::execute() {
@@ -691,8 +754,8 @@ void TouchCommand::execute() {
     t_time.tm_min = atoi(dates.at(1).c_str());
     t_time.tm_hour = atoi(dates.at(2).c_str());
     t_time.tm_mday = atoi(dates.at(3).c_str());
-    t_time.tm_mon = atoi(dates.at(4).c_str());
-    t_time.tm_year = atoi(dates.at(5).c_str());
+    t_time.tm_mon = (atoi(dates.at(4).c_str())-1);
+    t_time.tm_year = (atoi(dates.at(5).c_str())-1900);
     t_time.tm_wday = 0;
     t_time.tm_yday = 0;
     t_time.tm_isdst = -1;
@@ -700,34 +763,37 @@ void TouchCommand::execute() {
     time.actime = mktime(&t_time);
     if (time.actime == -1)
     {
-        perror("smash error: mktime failed\n");
+        perror("smash error: mktime failed");
+        return;
     }
     time.modtime = mktime(&t_time);
     if (time.modtime == -1)
     {
-        perror("smash error: mktime failed\n");
+        perror("smash error: mktime failed");
+        return;
     }
     int res = utime(params.at(1).c_str(), &time);
     if (res == -1)
     {
-        perror("smash error: utime failed\n");
+        perror("smash error: utime failed");
+        return;
     }
 }
 
 void RedirectionCommand::execute() { //">>" append //remove background sign
     SmallShell &smash = SmallShell::getInstance();
     string cmd_s = _trim(string(cmd_line));
-    vector<string> request = splitString(cmd_s, REDIRECTION_CHAR);
+    vector<string> request = splitString(cmd_s, REDIRECTION_CHAR, true);
 
     int old_fd = dup(STDOUT_FILENO);
     if (old_fd == -1) {
         perror("smash error: dup failed\n");
         return;
-    }
+    }// w/r/x = 6/7/7 = 110/111/111 3/7/7 011/111/111
     string data = request.back();
-    int new_fd = open(data.c_str(), O_CREAT | (request.size()==3 ? O_APPEND : O_TRUNC) , S_IRUSR | S_IWUSR | S_IRWXG | S_IRWXO);
+    int new_fd = open(data.c_str(), O_CREAT | O_WRONLY | (request.size()==3 ? O_APPEND : O_TRUNC) , S_IRUSR | S_IWUSR | S_IRGRP| S_IXGRP | S_IRWXO);
     if (new_fd == -1){
-        perror("smash error: open failed\n");
+        perror("smash error: open failed");
         return;
     }
     int res = dup2(new_fd, STDOUT_FILENO);//request.size() == 3 ? dup2(STD_OUT_CHANNEL, new_fd) : dup2(STD_OUT_CHANNEL, new_fd); //swap between standard out put to the file fd
@@ -747,6 +813,11 @@ void RedirectionCommand::execute() { //">>" append //remove background sign
     if (res == -1)
     {
         perror("smash open: dup2 failed\n"); //might need to print dup2 or dup3 :/
+    }
+    res = close(old_fd);
+    if(res == -1)
+    {
+        perror("smash error: close failed\n");
     }
 }
 
